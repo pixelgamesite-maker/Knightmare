@@ -1,0 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --color-mythic: hsl(var(--mythic));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --font-display: var(--app-font-display);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* DARK MODE ONLY */
+:root {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+
+  --opaque-button-border-intensity: 9;
+
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  /* Background: #0a0a0a */
+  --background: 0 0% 4%;
+  
+  /* Text: warm off-white (#f5f0e8) */
+  --foreground: 37 27% 94%;
+
+  /* Borders: subtle ember orange at low opacity */
+  --border: 29 100% 50% / 0.15;
+
+  /* Card surfaces: #111111 */
+  --card: 0 0% 7%;
+  --card-foreground: 37 27% 94%;
+  --card-border: 29 100% 50% / 0.2;
+
+  --popover: 0 0% 7%;
+  --popover-foreground: 37 27% 94%;
+  --popover-border: 29 100% 50% / 0.2;
+
+  /* Primary orange: #ff7a00 */
+  --primary: 29 100% 50%;
+  --primary-foreground: 0 0% 4%;
+
+  /* Accent gold: #ffd700 */
+  --secondary: 51 100% 50%;
+  --secondary-foreground: 0 0% 4%;
+
+  --muted: 0 0% 12%;
+  --muted-foreground: 0 0% 60%;
+
+  --accent: 29 100% 50% / 0.1;
+  --accent-foreground: 29 100% 50%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Mythic purple: #8b5cf6 */
+  --mythic: 258 90% 66%;
+
+  --input: 29 100% 50% / 0.2;
+  --ring: 29 100% 50%;
+  
+  --sidebar: 0 0% 6%;
+  --sidebar-foreground: 37 27% 94%;
+  --sidebar-border: 29 100% 50% / 0.15;
+  --sidebar-primary: 29 100% 50%;
+  --sidebar-primary-foreground: 0 0% 4%;
+  --sidebar-accent: 0 0% 10%;
+  --sidebar-accent-foreground: 37 27% 94%;
+  --sidebar-ring: 29 100% 50%;
+
+  --app-font-sans: 'Inter', sans-serif;
+  --app-font-serif: Georgia, serif;
+  --app-font-mono: Menlo, monospace;
+  --app-font-display: 'Cinzel Decorative', cursive;
+  
+  --radius: .5rem;
+
+  --shadow-2xs: 0px 2px 0px 0px hsl(29 100% 50% / 0.05);
+  --shadow-xs: 0px 2px 0px 0px hsl(29 100% 50% / 0.1);
+  --shadow-sm: 0px 2px 0px 0px hsl(29 100% 50% / 0.1), 0px 1px 2px -1px hsl(29 100% 50% / 0.1);
+  --shadow: 0px 2px 0px 0px hsl(29 100% 50% / 0.1), 0px 1px 2px -1px hsl(29 100% 50% / 0.1);
+  --shadow-md: 0px 2px 0px 0px hsl(29 100% 50% / 0.1), 0px 2px 4px -1px hsl(29 100% 50% / 0.1);
+  --shadow-lg: 0px 2px 0px 0px hsl(29 100% 50% / 0.1), 0px 4px 6px -1px hsl(29 100% 50% / 0.1);
+  --shadow-xl: 0px 2px 0px 0px hsl(29 100% 50% / 0.1), 0px 8px 10px -1px hsl(29 100% 50% / 0.1);
+  --shadow-2xl: 0px 2px 0px 0px hsl(29 100% 50% / 0.1);
+
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark { /* All styles are in root, dark mode by default */ }
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    /* Force dark mode */
+    color-scheme: dark;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-wide;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
+  }
+  .text-glow-mythic {
+    text-shadow: 0 0 15px hsl(var(--mythic) / 0.7);
+  }
+  .box-glow {
+    box-shadow: 0 0 15px hsl(var(--primary) / 0.2);
+  }
+  .box-glow-hover:hover {
+    box-shadow: 0 0 25px hsl(var(--primary) / 0.4);
+  }
+  .box-glow-mythic {
+    box-shadow: 0 0 20px hsl(var(--mythic) / 0.4);
+  }
+}
