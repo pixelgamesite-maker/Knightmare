@@ -64,20 +64,16 @@ export const getRankTitle = (power: number): string => {
   return "Novice";
 };
 
-export const getXPThreshold = (xp: number): { currentLevel: number, nextThreshold: number, progress: number } => {
+export const getXPThreshold = (xp: number) => {
   const thresholds = [0, 500, 1500, 3000, 7000];
-  let currentLevel = 0;
-  for (let i = 0; i < thresholds.length; i++) {
-    if (xp >= thresholds[i]) currentLevel = i;
-    else break;
-  }
+  const currentLevel = thresholds.reduce((acc, threshold, index) => (xp >= threshold ? index : acc), 0);
   
   const currentThreshold = thresholds[currentLevel];
-  const nextThreshold = thresholds[Math.min(currentLevel + 1, thresholds.length - 1)] || currentThreshold + 5000;
+  const nextThreshold = currentLevel < thresholds.length - 1 
+    ? thresholds[currentLevel + 1] 
+    : currentThreshold + 5000; // Infinity cap or prestige level
   
-  const progress = currentLevel === thresholds.length - 1 
-    ? 100 
-    : ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100;
+  const progress = Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100);
     
   return { currentLevel, nextThreshold, progress };
 };
