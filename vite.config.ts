@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-const port = Number(process.env.PORT) || 3000;
+// Prioritize the environment variable provided by Railway, 
+// but default to 8080 to match your networking configuration.
+const port = Number(process.env.PORT) || 8080;
 
 export default defineConfig({
   base: "/", 
@@ -13,7 +15,6 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      // Use import.meta.dirname for ES Modules compatibility
       "@": path.resolve(import.meta.dirname, "./src"),
       "@assets": path.resolve(import.meta.dirname, "./attached_assets"),
     },
@@ -25,10 +26,11 @@ export default defineConfig({
   server: {
     port,
     strictPort: true,
-    host: "0.0.0.0",
+    host: "0.0.0.0", // Required for Railway to route traffic
   },
   preview: {
     port,
+    strictPort: true,
     host: "0.0.0.0",
   },
 });
