@@ -1,106 +1,40 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useLocation } from "wouter";
-import { supabase } from "../lib/supabase";
 
-// ── Supabase asset URLs ───────────────────────────────────────────────────────
-const ASSETS = {
-  character: "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/character-1.png",
-  background: "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/background.png",
-};
+// ─── Supabase Storage base URL ───────────────────────────────────────────────
+const CDN = "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments";
 
-// ── Typewriter script ─────────────────────────────────────────────────────────
-const SCRIPT = [
-  { text: "The world was shattered.",          pause: 1800, showChar: false },
-  { text: "Its power broken into fragments…",  pause: 1600, showChar: true  },
-  { text: "",                                  pause: 700,  showChar: false },
-  { text: "Only those who collect the relics", pause: 1200, showChar: false },
-  { text: "can rebuild the armor…",            pause: 1500, showChar: false },
-  { text: "",                                  pause: 500,  showChar: false },
-  { text: "and survive what comes next.",      pause: 2200, showChar: false },
+// ─── Typewriter script ───────────────────────────────────────────────────────
+const LINES = [
+  { text: "The world was shattered.",           pause: 2000 },
+  { text: "Its power broken into fragments…",   pause: 1800, showChar: true },
+  { text: "",                                   pause: 700  },
+  { text: "Only those who collect the relics",  pause: 1400 },
+  { text: "can rebuild the armor…",             pause: 1800 },
+  { text: "",                                   pause: 500  },
+  { text: "and survive what comes next.",       pause: 2600 },
 ];
 
-const CHAR_MS = 72; // ms per character — slow, deliberate
+const CHAR_SPEED = 72; // ms per character — slow, dread-building
 
-// ── Scanline / pixel noise effect ────────────────────────────────────────────
-const SCANLINE_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
+// ─── Arcane rune particle ────────────────────────────────────────────────────
+const RUNES = ["᛭","ᚠ","ᚢ","ᚦ","ᚨ","ᚱ","ᚲ","ᚷ","ᚹ","ᚺ","ᚾ","ᛁ","ᛃ","ᛇ","ᛈ","ᛉ","ᛊ","ᛏ","ᛒ","ᛖ","ᛗ","ᛚ","ᛜ","ᛞ","ᛟ"];
+const PARTICLES = Array.from({ length: 16 }, (_, i) => ({
+  id: i,
+  x: 3 + Math.random() * 94,
+  rune: RUNES[Math.floor(Math.random() * RUNES.length)],
+  size: 10 + Math.random() * 8,
+  delay: i * 0.9 + Math.random() * 3,
+  duration: 8 + Math.random() * 8,
+  drift: (Math.random() - 0.5) * 80,
+  color: Math.random() > 0.6 ? "#22d3ee" : Math.random() > 0.5 ? "#a855f7" : "#4ade80",
+}));
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg:       #0d0b14;
-    --bg2:      #13101f;
-    --cyan:     #00e5ff;
-    --purple:   #9b30ff;
-    --orange:   #ff4d00;
-    --gold:     #ffd166;
-    --text:     #c8d8e8;
-    --text-dim: #4a5a6a;
-    --border:   #1e2a3a;
-  }
-
-  body { background: var(--bg); }
-
-  /* Pixel fonts */
-  .f-title { font-family: 'Press Start 2P', monospace; }
-  .f-body  { font-family: 'VT323', monospace; font-size: 20px; letter-spacing: 0.04em; }
-  .f-ui    { font-family: 'Press Start 2P', monospace; font-size: 8px; }
-
-  /* CRT scanlines */
-  .scanlines {
-    position: fixed; inset: 0; z-index: 100; pointer-events: none;
-    background: repeating-linear-gradient(
-      to bottom,
-      transparent 0px, transparent 2px,
-      rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
-    );
-  }
-
-  /* Pixel cursor */
-  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
-  .px-cursor {
-    display: inline-block; width: 10px; height: 14px;
-    background: var(--cyan); margin-left: 3px; vertical-align: middle;
-    animation: blink 0.9s step-start infinite;
-  }
-
-  /* Character flicker */
-  @keyframes char-flicker {
-    0%,94%,100% { opacity: 0.9; }
-    95%          { opacity: 0.7; }
-    97%          { opacity: 0.85; }
-  }
-  .char-flicker { animation: char-flicker 7s ease-in-out infinite; }
-
-  /* Image pixelated */
-  .px { image-rendering: pixelated; image-rendering: crisp-edges; }
-
-  /* Dialog border glow */
-  @keyframes border-pulse {
-    0%,100% { box-shadow: 0 0 8px var(--cyan), inset 0 0 8px rgba(0,229,255,0.05); }
-    50%     { box-shadow: 0 0 20px var(--cyan), inset 0 0 12px rgba(0,229,255,0.08); }
-  }
-  .dialog-glow { animation: border-pulse 3s ease-in-out infinite; }
-
-  /* Button hover sweep */
-  .px-btn {
-    position: relative; overflow: hidden; cursor: pointer;
-    transition: all 0.1s;
-  }
-  .px-btn::after {
-    content: '';
-    position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
-    transition: left 0.35s;
-  }
-  .px-btn:hover::after { left: 150%; }
-  .px-btn:active { transform: scale(0.97); }
-`;
-
-// ── Pixel dialog box ──────────────────────────────────────────────────────────
+// ─── Pixel dialog box ────────────────────────────────────────────────────────
 function PixelDialog({
-  title, body, options,
+  title,
+  body,
+  options,
 }: {
   title: string;
   body: string;
@@ -108,143 +42,164 @@ function PixelDialog({
 }) {
   return (
     <motion.div
-      style={{ position:"fixed", inset:0, zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 16px" }}
-      initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
+      style={{
+        position: "fixed", inset: 0, zIndex: 100,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "0 20px",
+      }}
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
     >
-      {/* dim overlay */}
-      <div style={{ position:"absolute", inset:0, background:"rgba(13,11,20,0.88)" }} />
+      {/* Overlay */}
+      <div style={{ position: "absolute", inset: 0, background: "rgba(4,2,12,0.88)" }} />
 
       <motion.div
-        style={{ position:"relative", zIndex:10, width:"100%", maxWidth:380 }}
-        initial={{ scale:0.8, opacity:0 }}
-        animate={{ scale:1, opacity:1 }}
-        exit={{ scale:0.8, opacity:0 }}
-        transition={{ type:"spring", stiffness:320, damping:28 }}
+        style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 380 }}
+        initial={{ scale: 0.82, y: 28, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.82, y: 28, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 26 }}
       >
-        {/* Outer border — double pixel frame */}
-        <div
-          className="dialog-glow"
-          style={{
-            border: "3px solid #00e5ff",
-            outline: "3px solid #0d0b14",
-            outlineOffset: "3px",
-            background: "#0d0b14",
-            imageRendering: "pixelated",
-          }}
-        >
+        {/* Outer pixel border — 3-layer technique */}
+        <div style={{
+          background: "#04020c",
+          border: "3px solid #7c3aed",
+          boxShadow: `
+            0 0 0 1px #04020c,
+            0 0 0 2px #a855f7,
+            inset 0 0 0 1px #1a0a2e,
+            0 0 40px rgba(168,85,247,0.25),
+            0 0 80px rgba(168,85,247,0.1)
+          `,
+          position: "relative",
+          imageRendering: "pixelated",
+        }}>
+          {/* Pixel corner dots */}
+          {["0,0","0,100","100,0","100,100"].map(xy => {
+            const [x, y] = xy.split(",").map(Number);
+            return (
+              <div key={xy} style={{
+                position: "absolute",
+                width: 4, height: 4,
+                background: "#22d3ee",
+                ...(x===0 && y===0   ? { top: -1, left: -1 }   : {}),
+                ...(x===0 && y===100 ? { bottom: -1, left: -1 } : {}),
+                ...(x===100 && y===0  ? { top: -1, right: -1 }  : {}),
+                ...(x===100 && y===100? { bottom: -1, right: -1 }: {}),
+              }} />
+            );
+          })}
+
           {/* Title bar */}
           <div style={{
-            background: "repeating-linear-gradient(90deg, #0a1520 0px, #0a1520 2px, #0d0b14 2px, #0d0b14 4px)",
-            borderBottom: "2px solid #00e5ff",
-            padding: "10px 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
+            borderBottom: "2px solid #1a0a2e",
+            padding: "10px 16px",
+            background: "linear-gradient(90deg, #0d0420 0%, #160830 50%, #0d0420 100%)",
           }}>
-            <div style={{ width:8, height:8, background:"#00e5ff", flexShrink:0 }} />
-            <p className="f-ui" style={{ color:"#00e5ff", letterSpacing:"0.15em", textTransform:"uppercase", fontSize:7 }}>
+            <p style={{
+              fontFamily: "'Press Start 2P', monospace",
+              fontSize: 8,
+              letterSpacing: "0.15em",
+              color: "#a855f7",
+              textAlign: "center",
+              margin: 0,
+              textShadow: "0 0 10px rgba(168,85,247,0.8)",
+            }}>
               {title}
             </p>
           </div>
 
-          {/* Body text */}
-          <div style={{ padding:"20px 16px 8px" }}>
-            <p className="f-body" style={{ color:"#c8d8e8", lineHeight:1.5, textAlign:"left", fontSize:18 }}>
+          {/* Body */}
+          <div style={{ padding: "22px 20px 8px" }}>
+            <p style={{
+              fontFamily: "'VT323', monospace",
+              fontSize: 20,
+              color: "#c4b5d4",
+              lineHeight: 1.5,
+              textAlign: "center",
+              margin: 0,
+            }}>
               {body}
             </p>
           </div>
 
-          {/* Arrow indicator (classic RPG) */}
-          <div style={{ padding:"4px 16px 4px", textAlign:"right" }}>
-            <motion.span
-              className="f-ui"
-              style={{ color:"#00e5ff", fontSize:7 }}
-              animate={{ opacity:[1,0,1] }}
-              transition={{ duration:0.8, repeat:Infinity }}
-            >
-              ▼
-            </motion.span>
-          </div>
+          {/* Separator */}
+          <div style={{ margin: "12px 20px", height: 1, background: "linear-gradient(90deg,transparent,#3b1d6e,transparent)" }} />
 
-          {/* Options */}
-          <div style={{ padding:"8px 16px 16px", display:"flex", gap:8, flexWrap:"wrap" }}>
+          {/* Buttons */}
+          <div style={{ padding: "4px 20px 20px", display: "flex", gap: 12, justifyContent: "center" }}>
             {options.map(opt => (
               <button
                 key={opt.label}
-                className="px-btn f-ui"
                 onClick={opt.action}
                 disabled={opt.loading}
                 style={{
+                  fontFamily: "'Press Start 2P', monospace",
                   fontSize: 8,
                   letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  padding: "10px 18px",
+                  padding: "10px 20px",
+                  cursor: opt.loading ? "wait" : "pointer",
                   opacity: opt.loading ? 0.6 : 1,
+                  border: "none",
+                  outline: "none",
+                  transition: "all 0.12s",
+                  imageRendering: "pixelated",
                   ...(opt.primary
                     ? {
-                        background: "#ff4d00",
-                        color: "#0d0b14",
-                        border: "2px solid #ff4d00",
-                        boxShadow: "4px 4px 0 #7a2000",
+                        background: "#7c3aed",
+                        color: "#fff",
+                        boxShadow: "0 0 0 2px #a855f7, 0 0 20px rgba(124,58,237,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
                       }
                     : {
-                        background: "transparent",
-                        color: "#4a5a6a",
-                        border: "2px solid #1e2a3a",
-                        boxShadow: "4px 4px 0 #0a0d12",
-                      }),
+                        background: "#0d0420",
+                        color: "#6b5a80",
+                        boxShadow: "0 0 0 2px #2d1a4e",
+                      }
+                  ),
+                }}
+                onMouseEnter={e => {
+                  const el = e.currentTarget;
+                  if (opt.primary) el.style.background = "#9333ea";
+                  else el.style.color = "#a855f7";
+                }}
+                onMouseLeave={e => {
+                  const el = e.currentTarget;
+                  if (opt.primary) el.style.background = "#7c3aed";
+                  else el.style.color = "#6b5a80";
                 }}
               >
-                {opt.loading ? "▓▓▓" : `▶ ${opt.label}`}
+                {opt.loading ? "..." : opt.label}
               </button>
             ))}
           </div>
-
-          {/* Pixel corner squares */}
-          {[
-            { top:-3, left:-3 }, { top:-3, right:-3 },
-            { bottom:-3, left:-3 }, { bottom:-3, right:-3 },
-          ].map((s, i) => (
-            <div key={i} style={{ position:"absolute", width:6, height:6, background:"#00e5ff", ...s }} />
-          ))}
         </div>
       </motion.div>
     </motion.div>
   );
 }
 
-// ── Main Landing ──────────────────────────────────────────────────────────────
+// ─── Main Landing ────────────────────────────────────────────────────────────
 export default function Landing() {
-  const [, navigate] = useLocation();
+  const [lineIdx, setLineIdx]           = useState(0);
+  const [charIdx, setCharIdx]           = useState(0);
+  const [committed, setCommitted]       = useState<string[]>([]);
+  const [charVisible, setCharVisible]   = useState(false);
+  const [scriptDone, setScriptDone]     = useState(false);
+  const [showCTA, setShowCTA]           = useState(false);
+  const [dialog, setDialog]             = useState<null | "confirm" | "connect">(null);
+  const [connecting, setConnecting]     = useState(false);
 
-  // Auth — if already signed in, skip to app
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate("/fragments");
-    });
-  }, [navigate]);
-
-  // Typewriter state
-  const [lineIdx, setLineIdx]         = useState(0);
-  const [charIdx, setCharIdx]         = useState(0);
-  const [committed, setCommitted]     = useState<string[]>([]);
-  const [charVisible, setCharVisible] = useState(false);
-  const [scriptDone, setScriptDone]   = useState(false);
-  const [showCTA, setShowCTA]         = useState(false);
-
-  // Dialog state
-  const [dialog, setDialog]           = useState<null|"confirm"|"connect">(null);
-  const [connecting, setConnecting]   = useState(false);
-
-  // Typewriter engine
+  // ── Typewriter ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (scriptDone) return;
-    if (lineIdx >= SCRIPT.length) {
+
+    if (lineIdx >= LINES.length) {
       setScriptDone(true);
       setTimeout(() => setShowCTA(true), 800);
       return;
     }
-    const entry = SCRIPT[lineIdx];
+
+    const entry = LINES[lineIdx];
+
     if (entry.text === "") {
       const t = setTimeout(() => {
         setCommitted(c => [...c, ""]);
@@ -253,11 +208,14 @@ export default function Landing() {
       }, entry.pause);
       return () => clearTimeout(t);
     }
+
     if (charIdx < entry.text.length) {
-      const t = setTimeout(() => setCharIdx(c => c + 1), CHAR_MS);
+      const t = setTimeout(() => setCharIdx(c => c + 1), CHAR_SPEED);
       return () => clearTimeout(t);
     }
+
     if (entry.showChar && !charVisible) setCharVisible(true);
+
     const t = setTimeout(() => {
       setCommitted(c => [...c, entry.text]);
       setLineIdx(i => i + 1);
@@ -266,188 +224,321 @@ export default function Landing() {
     return () => clearTimeout(t);
   }, [lineIdx, charIdx, scriptDone, charVisible]);
 
-  const currentEntry   = lineIdx < SCRIPT.length ? SCRIPT[lineIdx] : null;
+  const currentEntry   = lineIdx < LINES.length ? LINES[lineIdx] : null;
   const currentPartial = currentEntry && currentEntry.text !== ""
     ? currentEntry.text.slice(0, charIdx)
     : null;
 
-  const handleConnect = async () => {
+  const handleConnectX = async () => {
     setConnecting(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "twitter",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    });
-    if (error) {
-      console.error(error);
-      setConnecting(false);
-    }
+    window.location.href = "/api/auth/twitter";
   };
 
   return (
-    <>
-      <style>{SCANLINE_CSS}</style>
+    <div style={{
+      position: "relative",
+      minHeight: "100vh",
+      overflow: "hidden",
+      background: "#04020c",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    }}>
 
-      {/* CRT scanlines overlay */}
-      <div className="scanlines" />
+      {/* ── Fonts ── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
 
-      <div style={{ position:"relative", minHeight:"100vh", background:"var(--bg)", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center" }}>
+        @keyframes blink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
+        @keyframes charFlicker {
+          0%,88%,90%,95%,100% { opacity: 0.85; }
+          89% { opacity: 0.6; }
+          91%,94% { opacity: 0.75; }
+          96% { opacity: 0.55; }
+        }
+        @keyframes runeFloat {
+          0% { transform: translateY(0) translateX(0); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 0.4; }
+          100% { transform: translateY(-500px) translateX(var(--drift)); opacity: 0; }
+        }
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        @keyframes vignettePulse {
+          0%,100% { opacity: 0.6; }
+          50% { opacity: 0.5; }
+        }
 
-        {/* ── Background image (used after sign-in, dimmed here for cinematic) ── */}
-        {/* Kept very dim so it doesn't distract from the intro */}
-        <div style={{ position:"absolute", inset:0, zIndex:0 }}>
-          <img
-            src={ASSETS.background}
-            alt=""
-            className="px"
-            style={{ width:"100%", height:"100%", objectFit:"cover", opacity:0.07, filter:"brightness(0.4) saturate(0.5)" }}
+        .cursor-pixel {
+          display: inline-block;
+          width: 10px; height: 2px;
+          background: #a855f7;
+          margin-left: 3px;
+          vertical-align: middle;
+          box-shadow: 0 0 6px rgba(168,85,247,0.8);
+          animation: blink 1s step-start infinite;
+        }
+        .char-art {
+          animation: charFlicker 10s ease-in-out infinite;
+          image-rendering: pixelated;
+          image-rendering: crisp-edges;
+        }
+        .scanline {
+          position: absolute;
+          left: 0; right: 0;
+          height: 2px;
+          background: rgba(168,85,247,0.06);
+          animation: scanline 8s linear infinite;
+          pointer-events: none;
+          z-index: 5;
+        }
+      `}</style>
+
+      {/* ── CRT scanline ── */}
+      <div className="scanline" />
+
+      {/* ── Screen vignette ── */}
+      <div style={{
+        position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none",
+        background: "radial-gradient(ellipse 100% 100% at 50% 50%, transparent 40%, rgba(4,2,12,0.85) 100%)",
+        animation: "vignettePulse 4s ease-in-out infinite",
+      }} />
+
+      {/* ── Rune particles ── */}
+      <div style={{ position:"absolute",inset:0,zIndex:2,pointerEvents:"none",overflow:"hidden" }}>
+        {PARTICLES.map(p => (
+          <motion.span
+            key={p.id}
+            style={{
+              position: "absolute",
+              bottom: -20,
+              left: `${p.x}%`,
+              fontFamily: "monospace",
+              fontSize: p.size,
+              color: p.color,
+              opacity: 0,
+              userSelect: "none",
+              filter: `drop-shadow(0 0 4px ${p.color})`,
+            }}
+            animate={{
+              y: [0, -(480 + Math.random() * 200)],
+              x: [0, p.drift],
+              opacity: [0, 0.6, 0],
+              rotate: [0, Math.random() > 0.5 ? 90 : -90],
+            }}
+            transition={{
+              duration: p.duration,
+              delay: p.delay,
+              repeat: Infinity,
+              repeatDelay: 4 + Math.random() * 6,
+              ease: "easeOut",
+            }}
           />
-          <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 100% 100% at 50% 100%, rgba(13,11,20,0) 0%, rgba(13,11,20,0.98) 70%)" }} />
-        </div>
+        ))}
+      </div>
 
-        {/* ── Pixel particle embers ── */}
-        <div style={{ position:"absolute", inset:0, zIndex:1, pointerEvents:"none", overflow:"hidden" }}>
-          {Array.from({length:16},(_,i)=>(
-            <motion.div key={i}
+      {/* ── Character art ── */}
+      <AnimatePresence>
+        {charVisible && (
+          <motion.div
+            style={{
+              position: "absolute", inset: 0, zIndex: 4,
+              pointerEvents: "none",
+              display: "flex", alignItems: "flex-end", justifyContent: "center",
+            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 4.5, ease: "easeInOut" }}
+          >
+            {/* Bottom gradient so character bleeds into void */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(to top, #04020c 0%, rgba(4,2,12,0.7) 30%, rgba(4,2,12,0.2) 60%, transparent 100%)",
+              zIndex: 2,
+            }} />
+            {/* Side gradients */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(to right, #04020c 0%, transparent 30%, transparent 70%, #04020c 100%)",
+              zIndex: 2,
+            }} />
+            {/* Purple arcane glow behind character */}
+            <div style={{
+              position: "absolute",
+              bottom: 0, left: "50%",
+              transform: "translateX(-50%)",
+              width: "60%", height: "70%",
+              background: "radial-gradient(ellipse at 50% 100%, rgba(124,58,237,0.18) 0%, transparent 70%)",
+              zIndex: 1,
+            }} />
+            <img
+              src={`${CDN}/character-1.png`}
+              alt="character"
+              className="char-art"
               style={{
-                position:"absolute", bottom:0,
-                left:`${8+Math.random()*84}%`,
-                width: i%3===0 ? 3 : 2,
-                height: i%3===0 ? 3 : 2,
-                background: i%4===0 ? "#00e5ff" : i%3===0 ? "#9b30ff" : "#ff4d00",
+                height: "85vh",
+                width: "auto",
+                objectFit: "contain",
+                objectPosition: "bottom",
+                position: "relative",
+                zIndex: 2,
+                maxWidth: "50vw",
               }}
-              animate={{ y:[0,-(300+Math.random()*300)], x:[0,(Math.random()-0.5)*80], opacity:[0,0.9,0] }}
-              transition={{ duration:4+Math.random()*5, delay:i*0.8+Math.random()*3, repeat:Infinity, repeatDelay:2+Math.random()*4, ease:"easeOut" }}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Typewriter + CTA ── */}
+      <div style={{
+        position: "relative",
+        zIndex: 10,
+        width: "100%",
+        maxWidth: 520,
+        padding: "0 28px",
+      }}>
+        {/* Text lines */}
+        <div style={{ minHeight: 220 }}>
+          {committed.map((line, i) => (
+            <div key={i}>
+              {line === "" ? (
+                <div style={{ height: 20 }} />
+              ) : (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.4 }}
+                  style={{
+                    fontFamily: "'VT323', monospace",
+                    margin: 0,
+                    lineHeight: 1.6,
+                    ...(line === "and survive what comes next."
+                      ? {
+                          fontSize: 26,
+                          color: "#a855f7",
+                          textShadow: "0 0 20px rgba(168,85,247,0.9), 0 0 40px rgba(168,85,247,0.4)",
+                        }
+                      : {
+                          fontSize: 22,
+                          color: "#7c6a96",
+                        }
+                    ),
+                  }}
+                >
+                  {line}
+                </motion.p>
+              )}
+            </div>
           ))}
+
+          {/* Currently typing */}
+          {currentPartial !== null && (
+            <p style={{
+              fontFamily: "'VT323', monospace",
+              fontSize: 22,
+              color: "#7c6a96",
+              lineHeight: 1.6,
+              margin: 0,
+            }}>
+              {currentPartial}
+              <span className="cursor-pixel" />
+            </p>
+          )}
+
+          {/* Idle cursor */}
+          {currentEntry?.text === "" && !scriptDone && (
+            <p style={{ fontFamily: "'VT323', monospace", fontSize: 22, color: "#7c6a96", margin: 0 }}>
+              <span className="cursor-pixel" />
+            </p>
+          )}
         </div>
 
-        {/* ── Character fade-in ── */}
+        {/* ── CTA buttons ── */}
         <AnimatePresence>
-          {charVisible && (
+          {showCTA && (
             <motion.div
-              style={{ position:"absolute", inset:0, zIndex:2, pointerEvents:"none", display:"flex", alignItems:"flex-end", justifyContent:"center" }}
-              initial={{ opacity:0 }}
-              animate={{ opacity:1 }}
-              transition={{ duration:4.5, ease:"easeInOut" }}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1.2, ease: "easeOut" }}
+              style={{ marginTop: 48, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}
             >
-              {/* Side fade */}
-              <div style={{ position:"absolute", inset:0, zIndex:3, background:"linear-gradient(to right, #0d0b14 0%, transparent 20%, transparent 80%, #0d0b14 100%)" }} />
-              {/* Bottom fade */}
-              <div style={{ position:"absolute", inset:0, zIndex:3, background:"linear-gradient(to top, #0d0b14 0%, transparent 45%)" }} />
-              <img
-                src={ASSETS.character}
-                alt=""
-                className="px char-flicker"
+              {/* Accept — glowing primary */}
+              <button
+                onClick={() => setDialog("confirm")}
                 style={{
-                  height:"85vh",
-                  width:"auto",
-                  objectFit:"contain",
-                  objectPosition:"bottom",
-                  position:"relative",
-                  zIndex:2,
-                  filter:"drop-shadow(0 0 30px rgba(0,229,255,0.25))",
+                  fontFamily: "'Press Start 2P', monospace",
+                  fontSize: 9,
+                  letterSpacing: "0.1em",
+                  padding: "13px 28px",
+                  background: "#7c3aed",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  minWidth: 220,
+                  textAlign: "left",
+                  boxShadow: "0 0 0 2px #a855f7, 0 0 30px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.1)",
+                  transition: "all 0.15s",
+                  imageRendering: "pixelated",
                 }}
-              />
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "#9333ea";
+                  e.currentTarget.style.boxShadow = "0 0 0 2px #c084fc, 0 0 40px rgba(147,51,234,0.7), inset 0 1px 0 rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "#7c3aed";
+                  e.currentTarget.style.boxShadow = "0 0 0 2px #a855f7, 0 0 30px rgba(124,58,237,0.55), inset 0 1px 0 rgba(255,255,255,0.1)";
+                }}
+              >
+                ▶ ACCEPT QUEST
+              </button>
+
+              {/* Reject — ghost */}
+              <button
+                style={{
+                  fontFamily: "'Press Start 2P', monospace",
+                  fontSize: 9,
+                  letterSpacing: "0.1em",
+                  padding: "13px 28px",
+                  background: "transparent",
+                  color: "#2d1a4e",
+                  border: "none",
+                  cursor: "pointer",
+                  minWidth: 220,
+                  textAlign: "left",
+                  boxShadow: "0 0 0 2px #1a0a30",
+                  transition: "all 0.15s",
+                  imageRendering: "pixelated",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = "#4c306e";
+                  e.currentTarget.style.boxShadow = "0 0 0 2px #3b1d6e";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = "#2d1a4e";
+                  e.currentTarget.style.boxShadow = "0 0 0 2px #1a0a30";
+                }}
+              >
+                ✕ REJECT QUEST
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* ── Typewriter + CTA ── */}
-        <div style={{ position:"relative", zIndex:10, width:"100%", maxWidth:520, padding:"0 28px" }}>
-
-          {/* Text block */}
-          <div style={{ minHeight:180 }}>
-            {committed.map((line, i) => (
-              <div key={i}>
-                {line === ""
-                  ? <div style={{ height:20 }} />
-                  : <motion.p
-                      initial={{ opacity:0 }}
-                      animate={{ opacity:1 }}
-                      transition={{ duration:0.2 }}
-                      className="f-body"
-                      style={{
-                        color: line === "and survive what comes next."
-                          ? "#00e5ff"
-                          : "#8a9aaa",
-                        fontSize: line === "and survive what comes next." ? 22 : 19,
-                        textShadow: line === "and survive what comes next."
-                          ? "0 0 20px rgba(0,229,255,0.8), 0 0 40px rgba(0,229,255,0.3)"
-                          : "none",
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {line}
-                    </motion.p>
-                }
-              </div>
-            ))}
-
-            {/* Typing line */}
-            {currentPartial !== null && (
-              <p className="f-body" style={{ color:"#8a9aaa", fontSize:19, lineHeight:1.5 }}>
-                {currentPartial}<span className="px-cursor" />
-              </p>
-            )}
-
-            {/* Idle cursor between lines */}
-            {currentEntry?.text === "" && !scriptDone && (
-              <p className="f-body" style={{ color:"#8a9aaa", fontSize:19 }}>
-                <span className="px-cursor" />
-              </p>
-            )}
-          </div>
-
-          {/* CTA buttons */}
-          <AnimatePresence>
-            {showCTA && (
-              <motion.div
-                initial={{ opacity:0, y:20 }}
-                animate={{ opacity:1, y:0 }}
-                transition={{ duration:0.8, ease:"easeOut" }}
-                style={{ marginTop:48, display:"flex", flexDirection:"column", gap:12, alignItems:"flex-start" }}
-              >
-                <button
-                  className="px-btn f-ui"
-                  onClick={() => setDialog("confirm")}
-                  style={{
-                    fontSize:8, letterSpacing:"0.12em", textTransform:"uppercase",
-                    padding:"14px 32px", background:"#ff4d00", color:"#0d0b14",
-                    border:"2px solid #ff4d00",
-                    boxShadow:"4px 4px 0 #7a2000, 0 0 20px rgba(255,77,0,0.4)",
-                    minWidth:220,
-                  }}
-                >
-                  ▶ ACCEPT QUEST
-                </button>
-
-                <button
-                  className="px-btn f-ui"
-                  style={{
-                    fontSize:8, letterSpacing:"0.12em", textTransform:"uppercase",
-                    padding:"14px 32px", background:"transparent", color:"#2a3a4a",
-                    border:"2px solid #1a2a3a",
-                    boxShadow:"4px 4px 0 #080c12",
-                    minWidth:220,
-                  }}
-                >
-                  ✕ REJECT QUEST
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </div>
 
       {/* ── Dialog: Confirm ── */}
       <AnimatePresence>
         {dialog === "confirm" && (
           <PixelDialog
-            title="Quest Pending"
-            body="The fragments are scattered. Eight relics. Endless danger. Will you answer the call?"
+            title="// QUEST DETECTED //"
+            body="The fragments are scattered. The realm awaits a champion. Will you answer the call?"
             options={[
-              { label:"Yes", primary:true, action:()=>setDialog("connect") },
-              { label:"No",  action:()=>setDialog(null) },
+              { label: "YES", primary: true, action: () => setDialog("connect") },
+              { label: "NO",  action: () => setDialog(null) },
             ]}
           />
         )}
@@ -457,15 +548,15 @@ export default function Landing() {
       <AnimatePresence>
         {dialog === "connect" && (
           <PixelDialog
-            title="Identity Required"
-            body="The realm demands proof of who you are. Connect your X account to enter."
+            title="// IDENTITY REQUIRED //"
+            body="You must be known to enter this realm. Connect your X account to continue."
             options={[
-              { label:"Connect X", primary:true, loading:connecting, action:handleConnect },
-              { label:"Back", action:()=>{ if(!connecting) setDialog("confirm"); } },
+              { label: "CONNECT X", primary: true, loading: connecting, action: handleConnectX },
+              { label: "BACK", action: () => { if (!connecting) setDialog("confirm"); } },
             ]}
           />
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }
