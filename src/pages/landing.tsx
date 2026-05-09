@@ -231,9 +231,18 @@ export default function Landing() {
     : null;
 
   const handleConnectX = async () => {
-    setConnecting(true);
-    window.location.href = "/api/auth/twitter";
-  };
+  setConnecting(true);
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "twitter",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+  if (error) {
+    console.error(error.message);
+    setConnecting(false);
+  }
+};
 
   return (
     <div style={{
