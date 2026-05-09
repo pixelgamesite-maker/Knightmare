@@ -32,5 +32,7 @@ export default defineConfig({
     port,
     strictPort: true,
     host: "0.0.0.0",
+    // This allows the specific Railway host shown in d51deb3d-af84-4b46-ae2f-103102a42390
+    allowedHosts: true, 
   },
 });
