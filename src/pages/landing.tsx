@@ -1,3 +1,4 @@
+import { supabase } from "@/lib/supabase";
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
