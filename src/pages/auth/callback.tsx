@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { supabase } from "../lib/supabase";
+// Change this line to use the @ alias pointing to your src folder
+import { supabase } from "@/lib/supabase"; 
 
 export default function AuthCallback() {
   const [, navigate] = useLocation();
@@ -8,6 +9,7 @@ export default function AuthCallback() {
 
   useEffect(() => {
     async function handle() {
+      // Ensure the @supabase/supabase-js package is installed
       const { data, error } = await supabase.auth.getSession();
 
       if (error || !data.session) {
@@ -18,6 +20,7 @@ export default function AuthCallback() {
 
       const u = data.session.user;
 
+      // This logic remains the same, but relies on the correct supabase import above
       await supabase.from("players").upsert(
         {
           id:           u.id,
