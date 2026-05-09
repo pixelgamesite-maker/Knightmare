@@ -4,10 +4,11 @@
     "builder": "RAILPACK",
     "buildEnvironment": "V3"
   },
-  "deploy": {
+   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
     "startCommand": "npm run start",
+    "healthcheckPath": "/",
     "sleepApplication": true,
     "useLegacyStacker": false,
     "ipv6EgressEnabled": false,
