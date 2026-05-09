@@ -10,16 +10,21 @@ import Fragments from "@/pages/fragments";
 import Forge from "@/pages/forge";
 import Leaderboard from "@/pages/leaderboard";
 import Navbar from "@/components/layout/Navbar";
+import AuthCallback from "@/pages/auth/callback";  // ← add this
 
 const queryClient = new QueryClient();
 
 function Router() {
+  const [location] = useLocation();                 // ← add this
+  const isLanding = location === "/";               // ← add this
+
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground dark selection:bg-primary/30">
-      <Navbar />
-      <main className="flex-1 w-full pt-16">
+      {!isLanding && <Navbar />}                    {/* ← hide nav on landing */}
+      <main className={`flex-1 w-full ${!isLanding ? "pt-16" : ""}`}>
         <Switch>
           <Route path="/" component={Landing} />
+          <Route path="/auth/callback" component={AuthCallback} />  {/* ← add this */}
           <Route path="/fragments" component={Fragments} />
           <Route path="/forge" component={Forge} />
           <Route path="/leaderboard" component={Leaderboard} />
