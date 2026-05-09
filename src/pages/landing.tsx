@@ -1,490 +1,471 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Swords, Flame, Trophy, ChevronRight } from "lucide-react";
+import { useLocation } from "wouter";
+import { supabase } from "../lib/supabase";
 
-// ── Pixel art fragment images (replace src with real paths) ──────────────────
-const FRAGMENTS = [
-  { name: "Sword",               src: "/assets/sword.jpg" },
-  { name: "Helm",                src: "/assets/helm.jpg" },
-  { name: "Plate",               src: "/assets/plate.jpg" },
-  { name: "Gloves",              src: "/assets/gloves.jpg" },
-  { name: "Boots",               src: "/assets/boots.jpg" },
-  { name: "Doom Potion",         src: "/assets/doom-potion.jpg" },
-  { name: "Book of Reincarnation", src: "/assets/book.jpg" },
-  { name: "Heart of Fire",       src: "/assets/heart.jpg" },
+// ── Supabase asset URLs ───────────────────────────────────────────────────────
+const ASSETS = {
+  character: "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/character-1.png",
+  background: "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/background.png",
+};
+
+// ── Typewriter script ─────────────────────────────────────────────────────────
+const SCRIPT = [
+  { text: "The world was shattered.",          pause: 1800, showChar: false },
+  { text: "Its power broken into fragments…",  pause: 1600, showChar: true  },
+  { text: "",                                  pause: 700,  showChar: false },
+  { text: "Only those who collect the relics", pause: 1200, showChar: false },
+  { text: "can rebuild the armor…",            pause: 1500, showChar: false },
+  { text: "",                                  pause: 500,  showChar: false },
+  { text: "and survive what comes next.",      pause: 2200, showChar: false },
 ];
 
-// ── Typewriter lines ─────────────────────────────────────────────────────────
-const LINES = [
-  "The world was shattered.",
-  "Its power broken into fragments…",
-  "",
-  "Only those who collect the relics",
-  "can rebuild the armor…",
-  "",
-  "and survive what comes next.",
-];
+const CHAR_MS = 72; // ms per character — slow, deliberate
 
-// ── Hamburger nav links ──────────────────────────────────────────────────────
-const NAV_LINKS = [
-  { href: "/fragments", label: "Hunt" },
-  { href: "/forge",     label: "Forge" },
-  { href: "/leaderboard", label: "Leaderboard" },
-];
+// ── Scanline / pixel noise effect ────────────────────────────────────────────
+const SCANLINE_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap');
 
-// ── Ember particles ──────────────────────────────────────────────────────────
-const EMBERS = Array.from({ length: 30 }, (_, i) => ({
-  id: i,
-  x: Math.random() * 100,
-  size: 2 + Math.random() * 3,
-  delay: i * 0.25,
-  duration: 4 + Math.random() * 4,
-}));
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-// ── Typewriter hook ──────────────────────────────────────────────────────────
-function useTypewriter(lines: string[], speed = 38) {
-  const [displayed, setDisplayed] = useState<string[]>([]);
-  const [currentLine, setCurrentLine] = useState(0);
-  const [currentChar, setCurrentChar] = useState(0);
-  const [done, setDone] = useState(false);
+  :root {
+    --bg:       #0d0b14;
+    --bg2:      #13101f;
+    --cyan:     #00e5ff;
+    --purple:   #9b30ff;
+    --orange:   #ff4d00;
+    --gold:     #ffd166;
+    --text:     #c8d8e8;
+    --text-dim: #4a5a6a;
+    --border:   #1e2a3a;
+  }
 
-  useEffect(() => {
-    if (currentLine >= lines.length) { setDone(true); return; }
-    const line = lines[currentLine];
+  body { background: var(--bg); }
 
-    if (line === "") {
-      const t = setTimeout(() => {
-        setDisplayed(d => [...d, ""]);
-        setCurrentLine(l => l + 1);
-        setCurrentChar(0);
-      }, 400);
-      return () => clearTimeout(t);
-    }
+  /* Pixel fonts */
+  .f-title { font-family: 'Press Start 2P', monospace; }
+  .f-body  { font-family: 'VT323', monospace; font-size: 20px; letter-spacing: 0.04em; }
+  .f-ui    { font-family: 'Press Start 2P', monospace; font-size: 8px; }
 
-    if (currentChar < line.length) {
-      const t = setTimeout(() => setCurrentChar(c => c + 1), speed);
-      return () => clearTimeout(t);
-    } else {
-      const t = setTimeout(() => {
-        setDisplayed(d => [...d, line]);
-        setCurrentLine(l => l + 1);
-        setCurrentChar(0);
-      }, 600);
-      return () => clearTimeout(t);
-    }
-  }, [currentLine, currentChar, lines, speed]);
+  /* CRT scanlines */
+  .scanlines {
+    position: fixed; inset: 0; z-index: 100; pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px, transparent 2px,
+      rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px
+    );
+  }
 
-  const partial = currentLine < lines.length && lines[currentLine] !== ""
-    ? lines[currentLine].slice(0, currentChar)
-    : null;
+  /* Pixel cursor */
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  .px-cursor {
+    display: inline-block; width: 10px; height: 14px;
+    background: var(--cyan); margin-left: 3px; vertical-align: middle;
+    animation: blink 0.9s step-start infinite;
+  }
 
-  return { displayed, partial, done };
-}
+  /* Character flicker */
+  @keyframes char-flicker {
+    0%,94%,100% { opacity: 0.9; }
+    95%          { opacity: 0.7; }
+    97%          { opacity: 0.85; }
+  }
+  .char-flicker { animation: char-flicker 7s ease-in-out infinite; }
 
-// ── Twitter sign-in modal ────────────────────────────────────────────────────
-function TwitterModal({ onClose }: { onClose: () => void }) {
+  /* Image pixelated */
+  .px { image-rendering: pixelated; image-rendering: crisp-edges; }
+
+  /* Dialog border glow */
+  @keyframes border-pulse {
+    0%,100% { box-shadow: 0 0 8px var(--cyan), inset 0 0 8px rgba(0,229,255,0.05); }
+    50%     { box-shadow: 0 0 20px var(--cyan), inset 0 0 12px rgba(0,229,255,0.08); }
+  }
+  .dialog-glow { animation: border-pulse 3s ease-in-out infinite; }
+
+  /* Button hover sweep */
+  .px-btn {
+    position: relative; overflow: hidden; cursor: pointer;
+    transition: all 0.1s;
+  }
+  .px-btn::after {
+    content: '';
+    position: absolute; top: 0; left: -100%; width: 60%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    transition: left 0.35s;
+  }
+  .px-btn:hover::after { left: 150%; }
+  .px-btn:active { transform: scale(0.97); }
+`;
+
+// ── Pixel dialog box ──────────────────────────────────────────────────────────
+function PixelDialog({
+  title, body, options,
+}: {
+  title: string;
+  body: string;
+  options: { label: string; action: () => void; primary?: boolean; loading?: boolean }[];
+}) {
   return (
     <motion.div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      style={{ position:"fixed", inset:0, zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:"0 16px" }}
+      initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
     >
-      {/* backdrop */}
-      <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      {/* dim overlay */}
+      <div style={{ position:"absolute", inset:0, background:"rgba(13,11,20,0.88)" }} />
+
       <motion.div
-        className="relative z-10 w-[340px] rounded-2xl border border-[#e8c97e]/30 bg-[#0a0806] p-8 text-center shadow-[0_0_60px_rgba(232,201,126,0.15)]"
-        initial={{ scale: 0.85, y: 30, opacity: 0 }}
-        animate={{ scale: 1, y: 0, opacity: 1 }}
-        exit={{ scale: 0.85, y: 30, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 28 }}
+        style={{ position:"relative", zIndex:10, width:"100%", maxWidth:380 }}
+        initial={{ scale:0.8, opacity:0 }}
+        animate={{ scale:1, opacity:1 }}
+        exit={{ scale:0.8, opacity:0 }}
+        transition={{ type:"spring", stiffness:320, damping:28 }}
       >
-        {/* pixel crate icon */}
-        <div className="mx-auto mb-5 w-16 h-16 flex items-center justify-center">
-          <img src="/assets/crate-closed.jpg" alt="crate" className="w-full h-full object-contain pixelated" />
+        {/* Outer border — double pixel frame */}
+        <div
+          className="dialog-glow"
+          style={{
+            border: "3px solid #00e5ff",
+            outline: "3px solid #0d0b14",
+            outlineOffset: "3px",
+            background: "#0d0b14",
+            imageRendering: "pixelated",
+          }}
+        >
+          {/* Title bar */}
+          <div style={{
+            background: "repeating-linear-gradient(90deg, #0a1520 0px, #0a1520 2px, #0d0b14 2px, #0d0b14 4px)",
+            borderBottom: "2px solid #00e5ff",
+            padding: "10px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}>
+            <div style={{ width:8, height:8, background:"#00e5ff", flexShrink:0 }} />
+            <p className="f-ui" style={{ color:"#00e5ff", letterSpacing:"0.15em", textTransform:"uppercase", fontSize:7 }}>
+              {title}
+            </p>
+          </div>
+
+          {/* Body text */}
+          <div style={{ padding:"20px 16px 8px" }}>
+            <p className="f-body" style={{ color:"#c8d8e8", lineHeight:1.5, textAlign:"left", fontSize:18 }}>
+              {body}
+            </p>
+          </div>
+
+          {/* Arrow indicator (classic RPG) */}
+          <div style={{ padding:"4px 16px 4px", textAlign:"right" }}>
+            <motion.span
+              className="f-ui"
+              style={{ color:"#00e5ff", fontSize:7 }}
+              animate={{ opacity:[1,0,1] }}
+              transition={{ duration:0.8, repeat:Infinity }}
+            >
+              ▼
+            </motion.span>
+          </div>
+
+          {/* Options */}
+          <div style={{ padding:"8px 16px 16px", display:"flex", gap:8, flexWrap:"wrap" }}>
+            {options.map(opt => (
+              <button
+                key={opt.label}
+                className="px-btn f-ui"
+                onClick={opt.action}
+                disabled={opt.loading}
+                style={{
+                  fontSize: 8,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  padding: "10px 18px",
+                  opacity: opt.loading ? 0.6 : 1,
+                  ...(opt.primary
+                    ? {
+                        background: "#ff4d00",
+                        color: "#0d0b14",
+                        border: "2px solid #ff4d00",
+                        boxShadow: "4px 4px 0 #7a2000",
+                      }
+                    : {
+                        background: "transparent",
+                        color: "#4a5a6a",
+                        border: "2px solid #1e2a3a",
+                        boxShadow: "4px 4px 0 #0a0d12",
+                      }),
+                }}
+              >
+                {opt.loading ? "▓▓▓" : `▶ ${opt.label}`}
+              </button>
+            ))}
+          </div>
+
+          {/* Pixel corner squares */}
+          {[
+            { top:-3, left:-3 }, { top:-3, right:-3 },
+            { bottom:-3, left:-3 }, { bottom:-3, right:-3 },
+          ].map((s, i) => (
+            <div key={i} style={{ position:"absolute", width:6, height:6, background:"#00e5ff", ...s }} />
+          ))}
         </div>
-
-        <h2 className="font-display text-xl text-[#e8c97e] mb-2 tracking-widest uppercase">
-          Begin Your Quest
-        </h2>
-        <p className="text-[11px] text-[#8a7a60] mb-7 leading-relaxed">
-          Sign in with X to enter the Fragment Forge campaign and start collecting relics.
-        </p>
-
-        <a
-          href="/api/auth/twitter"
-          className="flex items-center justify-center gap-3 w-full py-3 rounded-xl bg-white text-black font-bold text-sm tracking-wide hover:bg-[#e8e8e8] transition-colors"
-        >
-          {/* X logo */}
-          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-black shrink-0">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-          Continue with X
-        </a>
-
-        <button
-          onClick={onClose}
-          className="mt-4 text-[11px] text-[#4a3f2e] hover:text-[#8a7a60] transition-colors"
-        >
-          Maybe later
-        </button>
       </motion.div>
     </motion.div>
   );
 }
 
-// ── Main Landing ─────────────────────────────────────────────────────────────
+// ── Main Landing ──────────────────────────────────────────────────────────────
 export default function Landing() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [showButtons, setShowButtons] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [bgVisible, setBgVisible] = useState(false);
-  const { displayed, partial, done } = useTypewriter(LINES, 36);
+  const [, navigate] = useLocation();
 
-  // Fade in background a beat after component mounts
+  // Auth — if already signed in, skip to app
   useEffect(() => {
-    const t = setTimeout(() => setBgVisible(true), 300);
-    return () => clearTimeout(t);
-  }, []);
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate("/fragments");
+    });
+  }, [navigate]);
 
-  // Show CTA buttons once typewriter finishes
+  // Typewriter state
+  const [lineIdx, setLineIdx]         = useState(0);
+  const [charIdx, setCharIdx]         = useState(0);
+  const [committed, setCommitted]     = useState<string[]>([]);
+  const [charVisible, setCharVisible] = useState(false);
+  const [scriptDone, setScriptDone]   = useState(false);
+  const [showCTA, setShowCTA]         = useState(false);
+
+  // Dialog state
+  const [dialog, setDialog]           = useState<null|"confirm"|"connect">(null);
+  const [connecting, setConnecting]   = useState(false);
+
+  // Typewriter engine
   useEffect(() => {
-    if (done) {
-      const t = setTimeout(() => setShowButtons(true), 500);
+    if (scriptDone) return;
+    if (lineIdx >= SCRIPT.length) {
+      setScriptDone(true);
+      setTimeout(() => setShowCTA(true), 800);
+      return;
+    }
+    const entry = SCRIPT[lineIdx];
+    if (entry.text === "") {
+      const t = setTimeout(() => {
+        setCommitted(c => [...c, ""]);
+        setLineIdx(i => i + 1);
+        setCharIdx(0);
+      }, entry.pause);
       return () => clearTimeout(t);
     }
-  }, [done]);
+    if (charIdx < entry.text.length) {
+      const t = setTimeout(() => setCharIdx(c => c + 1), CHAR_MS);
+      return () => clearTimeout(t);
+    }
+    if (entry.showChar && !charVisible) setCharVisible(true);
+    const t = setTimeout(() => {
+      setCommitted(c => [...c, entry.text]);
+      setLineIdx(i => i + 1);
+      setCharIdx(0);
+    }, entry.pause);
+    return () => clearTimeout(t);
+  }, [lineIdx, charIdx, scriptDone, charVisible]);
+
+  const currentEntry   = lineIdx < SCRIPT.length ? SCRIPT[lineIdx] : null;
+  const currentPartial = currentEntry && currentEntry.text !== ""
+    ? currentEntry.text.slice(0, charIdx)
+    : null;
+
+  const handleConnect = async () => {
+    setConnecting(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "twitter",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) {
+      console.error(error);
+      setConnecting(false);
+    }
+  };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#050302] text-[#e8dcc8]" style={{ fontFamily: "'IM Fell English', serif" }}>
+    <>
+      <style>{SCANLINE_CSS}</style>
 
-      {/* ── Google Fonts ── */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel+Decorative:wght@400;700&family=Share+Tech+Mono&display=swap');
+      {/* CRT scanlines overlay */}
+      <div className="scanlines" />
 
-        .font-display  { font-family: 'Cinzel Decorative', serif; }
-        .font-mono-px  { font-family: 'Share Tech Mono', monospace; }
-        .pixelated     { image-rendering: pixelated; }
+      <div style={{ position:"relative", minHeight:"100vh", background:"var(--bg)", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center" }}>
 
-        /* scanline overlay */
-        .scanlines::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: repeating-linear-gradient(
-            to bottom,
-            transparent 0px,
-            transparent 3px,
-            rgba(0,0,0,0.08) 3px,
-            rgba(0,0,0,0.08) 4px
-          );
-          pointer-events: none;
-          z-index: 2;
-        }
-
-        /* cursor blink */
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-        .cursor { display:inline-block; width:2px; height:1em; background:#e8c97e; margin-left:3px; vertical-align:middle; animation: blink 0.9s step-start infinite; }
-
-        /* glow text */
-        .gold-glow { text-shadow: 0 0 20px rgba(232,201,126,0.7), 0 0 40px rgba(232,201,126,0.3); }
-        .ember-glow { box-shadow: 0 0 30px rgba(232,120,30,0.6), 0 0 60px rgba(232,120,30,0.2); }
-
-        /* btn hover line-sweep */
-        .btn-accept {
-          position: relative;
-          overflow: hidden;
-        }
-        .btn-accept::after {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.12) 50%, transparent 100%);
-          transform: translateX(-100%);
-          transition: transform 0.4s ease;
-        }
-        .btn-accept:hover::after { transform: translateX(100%); }
-      `}</style>
-
-      {/* ── Scanlines ── */}
-      <div className="scanlines absolute inset-0 pointer-events-none z-10" />
-
-      {/* ── Background: pixel art character / scene ── */}
-      <motion.div
-        className="absolute inset-0 z-0"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: bgVisible ? 1 : 0 }}
-        transition={{ duration: 3, ease: "easeInOut" }}
-      >
-        {/* dark vignette gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#050302] via-[#050302]/70 to-[#050302]/30 z-10" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#050302]/90 via-transparent to-[#050302]/90 z-10" />
-
-        {/* floating fragment silhouettes as ambient background */}
-        <div className="absolute inset-0 flex items-center justify-center z-0 opacity-10">
-          <div className="w-full h-full max-w-4xl grid grid-cols-4 grid-rows-2 gap-8 p-16 items-center">
-            {FRAGMENTS.map((f, i) => (
-              <motion.img
-                key={f.name}
-                src={f.src}
-                alt={f.name}
-                className="w-full object-contain pixelated opacity-60"
-                animate={{ y: [0, -8, 0], rotate: [0, i % 2 === 0 ? 3 : -3, 0] }}
-                transition={{ duration: 5 + i * 0.4, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
-              />
-            ))}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* ── Ember particles ── */}
-      <div className="absolute inset-0 z-[3] pointer-events-none overflow-hidden">
-        {EMBERS.map(e => (
-          <motion.div
-            key={e.id}
-            className="absolute bottom-0 rounded-full"
-            style={{
-              left: `${e.x}%`,
-              width: e.size,
-              height: e.size,
-              background: `radial-gradient(circle, #ff8c30 0%, #e85010 100%)`,
-            }}
-            animate={{
-              y: [0, -(350 + Math.random() * 250)],
-              opacity: [0, 0.9, 0],
-              x: [0, (Math.random() - 0.5) * 120],
-              scale: [1, 0.2],
-            }}
-            transition={{
-              duration: e.duration,
-              delay: e.delay,
-              repeat: Infinity,
-              repeatDelay: Math.random() * 3,
-              ease: "easeOut",
-            }}
+        {/* ── Background image (used after sign-in, dimmed here for cinematic) ── */}
+        {/* Kept very dim so it doesn't distract from the intro */}
+        <div style={{ position:"absolute", inset:0, zIndex:0 }}>
+          <img
+            src={ASSETS.background}
+            alt=""
+            className="px"
+            style={{ width:"100%", height:"100%", objectFit:"cover", opacity:0.07, filter:"brightness(0.4) saturate(0.5)" }}
           />
-        ))}
+          <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse 100% 100% at 50% 100%, rgba(13,11,20,0) 0%, rgba(13,11,20,0.98) 70%)" }} />
+        </div>
+
+        {/* ── Pixel particle embers ── */}
+        <div style={{ position:"absolute", inset:0, zIndex:1, pointerEvents:"none", overflow:"hidden" }}>
+          {Array.from({length:16},(_,i)=>(
+            <motion.div key={i}
+              style={{
+                position:"absolute", bottom:0,
+                left:`${8+Math.random()*84}%`,
+                width: i%3===0 ? 3 : 2,
+                height: i%3===0 ? 3 : 2,
+                background: i%4===0 ? "#00e5ff" : i%3===0 ? "#9b30ff" : "#ff4d00",
+              }}
+              animate={{ y:[0,-(300+Math.random()*300)], x:[0,(Math.random()-0.5)*80], opacity:[0,0.9,0] }}
+              transition={{ duration:4+Math.random()*5, delay:i*0.8+Math.random()*3, repeat:Infinity, repeatDelay:2+Math.random()*4, ease:"easeOut" }}
+            />
+          ))}
+        </div>
+
+        {/* ── Character fade-in ── */}
+        <AnimatePresence>
+          {charVisible && (
+            <motion.div
+              style={{ position:"absolute", inset:0, zIndex:2, pointerEvents:"none", display:"flex", alignItems:"flex-end", justifyContent:"center" }}
+              initial={{ opacity:0 }}
+              animate={{ opacity:1 }}
+              transition={{ duration:4.5, ease:"easeInOut" }}
+            >
+              {/* Side fade */}
+              <div style={{ position:"absolute", inset:0, zIndex:3, background:"linear-gradient(to right, #0d0b14 0%, transparent 20%, transparent 80%, #0d0b14 100%)" }} />
+              {/* Bottom fade */}
+              <div style={{ position:"absolute", inset:0, zIndex:3, background:"linear-gradient(to top, #0d0b14 0%, transparent 45%)" }} />
+              <img
+                src={ASSETS.character}
+                alt=""
+                className="px char-flicker"
+                style={{
+                  height:"85vh",
+                  width:"auto",
+                  objectFit:"contain",
+                  objectPosition:"bottom",
+                  position:"relative",
+                  zIndex:2,
+                  filter:"drop-shadow(0 0 30px rgba(0,229,255,0.25))",
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Typewriter + CTA ── */}
+        <div style={{ position:"relative", zIndex:10, width:"100%", maxWidth:520, padding:"0 28px" }}>
+
+          {/* Text block */}
+          <div style={{ minHeight:180 }}>
+            {committed.map((line, i) => (
+              <div key={i}>
+                {line === ""
+                  ? <div style={{ height:20 }} />
+                  : <motion.p
+                      initial={{ opacity:0 }}
+                      animate={{ opacity:1 }}
+                      transition={{ duration:0.2 }}
+                      className="f-body"
+                      style={{
+                        color: line === "and survive what comes next."
+                          ? "#00e5ff"
+                          : "#8a9aaa",
+                        fontSize: line === "and survive what comes next." ? 22 : 19,
+                        textShadow: line === "and survive what comes next."
+                          ? "0 0 20px rgba(0,229,255,0.8), 0 0 40px rgba(0,229,255,0.3)"
+                          : "none",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {line}
+                    </motion.p>
+                }
+              </div>
+            ))}
+
+            {/* Typing line */}
+            {currentPartial !== null && (
+              <p className="f-body" style={{ color:"#8a9aaa", fontSize:19, lineHeight:1.5 }}>
+                {currentPartial}<span className="px-cursor" />
+              </p>
+            )}
+
+            {/* Idle cursor between lines */}
+            {currentEntry?.text === "" && !scriptDone && (
+              <p className="f-body" style={{ color:"#8a9aaa", fontSize:19 }}>
+                <span className="px-cursor" />
+              </p>
+            )}
+          </div>
+
+          {/* CTA buttons */}
+          <AnimatePresence>
+            {showCTA && (
+              <motion.div
+                initial={{ opacity:0, y:20 }}
+                animate={{ opacity:1, y:0 }}
+                transition={{ duration:0.8, ease:"easeOut" }}
+                style={{ marginTop:48, display:"flex", flexDirection:"column", gap:12, alignItems:"flex-start" }}
+              >
+                <button
+                  className="px-btn f-ui"
+                  onClick={() => setDialog("confirm")}
+                  style={{
+                    fontSize:8, letterSpacing:"0.12em", textTransform:"uppercase",
+                    padding:"14px 32px", background:"#ff4d00", color:"#0d0b14",
+                    border:"2px solid #ff4d00",
+                    boxShadow:"4px 4px 0 #7a2000, 0 0 20px rgba(255,77,0,0.4)",
+                    minWidth:220,
+                  }}
+                >
+                  ▶ ACCEPT QUEST
+                </button>
+
+                <button
+                  className="px-btn f-ui"
+                  style={{
+                    fontSize:8, letterSpacing:"0.12em", textTransform:"uppercase",
+                    padding:"14px 32px", background:"transparent", color:"#2a3a4a",
+                    border:"2px solid #1a2a3a",
+                    boxShadow:"4px 4px 0 #080c12",
+                    minWidth:220,
+                  }}
+                >
+                  ✕ REJECT QUEST
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      {/* ── Hamburger Navbar ── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-5 py-4">
-        {/* Logo */}
-        <a href="/" className="flex items-center gap-2">
-          <img src="/assets/crate-closed.jpg" alt="logo" className="w-6 h-6 object-contain pixelated" />
-          <span className="font-display text-xs text-[#e8c97e] tracking-[0.25em] gold-glow">FRAGMENT FORGE</span>
-        </a>
-
-        {/* Hamburger button */}
-        <button
-          onClick={() => setMenuOpen(m => !m)}
-          className="relative z-50 w-9 h-9 flex flex-col items-center justify-center gap-[5px] group"
-          aria-label="Toggle menu"
-        >
-          <motion.span
-            className="block w-6 h-[1.5px] bg-[#e8c97e] origin-center transition-all"
-            animate={{ rotate: menuOpen ? 45 : 0, y: menuOpen ? 6.5 : 0 }}
-          />
-          <motion.span
-            className="block w-6 h-[1.5px] bg-[#e8c97e] transition-all"
-            animate={{ opacity: menuOpen ? 0 : 1 }}
-          />
-          <motion.span
-            className="block w-6 h-[1.5px] bg-[#e8c97e] origin-center transition-all"
-            animate={{ rotate: menuOpen ? -45 : 0, y: menuOpen ? -6.5 : 0 }}
-          />
-        </button>
-      </nav>
-
-      {/* ── Slide-down mobile menu ── */}
+      {/* ── Dialog: Confirm ── */}
       <AnimatePresence>
-        {menuOpen && (
-          <motion.div
-            className="fixed inset-0 z-40 flex flex-col items-center justify-center bg-[#050302]/97 backdrop-blur-md"
-            initial={{ clipPath: "inset(0 0 100% 0)" }}
-            animate={{ clipPath: "inset(0 0 0% 0)" }}
-            exit={{ clipPath: "inset(0 0 100% 0)" }}
-            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          >
-            {/* pixel corner decorations */}
-            <div className="absolute top-6 left-6 w-8 h-8 border-t-2 border-l-2 border-[#e8c97e]/30" />
-            <div className="absolute top-6 right-16 w-8 h-8 border-t-2 border-r-2 border-[#e8c97e]/30" />
-            <div className="absolute bottom-6 left-6 w-8 h-8 border-b-2 border-l-2 border-[#e8c97e]/30" />
-            <div className="absolute bottom-6 right-6 w-8 h-8 border-b-2 border-r-2 border-[#e8c97e]/30" />
-
-            <div className="flex flex-col items-center gap-8">
-              {NAV_LINKS.map((link, i) => (
-                <motion.a
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="font-display text-2xl text-[#e8c97e]/80 hover:text-[#e8c97e] tracking-[0.2em] transition-colors"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + i * 0.08 }}
-                >
-                  {link.label}
-                </motion.a>
-              ))}
-
-              <motion.div
-                className="mt-4 h-px w-32 bg-gradient-to-r from-transparent via-[#e8c97e]/30 to-transparent"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              />
-
-              <motion.button
-                onClick={() => { setMenuOpen(false); setShowModal(true); }}
-                className="mt-2 px-6 py-2 border border-[#e8c97e]/40 text-[#e8c97e] text-sm tracking-widest hover:border-[#e8c97e] transition-colors font-mono-px"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.45 }}
-              >
-                [ SIGN IN ]
-              </motion.button>
-            </div>
-          </motion.div>
+        {dialog === "confirm" && (
+          <PixelDialog
+            title="Quest Pending"
+            body="The fragments are scattered. Eight relics. Endless danger. Will you answer the call?"
+            options={[
+              { label:"Yes", primary:true, action:()=>setDialog("connect") },
+              { label:"No",  action:()=>setDialog(null) },
+            ]}
+          />
         )}
       </AnimatePresence>
 
-      {/* ── Hero: Typewriter intro ── */}
-      <div className="relative z-20 flex flex-col items-center justify-center min-h-screen px-6 text-center">
-
-        {/* Top rune separator */}
-        <motion.div
-          className="mb-10 flex items-center gap-3"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <div className="h-px w-12 bg-gradient-to-r from-transparent to-[#e8c97e]/40" />
-          <span className="text-[#e8c97e]/40 font-mono-px text-[10px] tracking-[0.5em]">◆ FRAGMENT FORGE ◆</span>
-          <div className="h-px w-12 bg-gradient-to-l from-transparent to-[#e8c97e]/40" />
-        </motion.div>
-
-        {/* Typewriter text block */}
-        <div className="max-w-lg text-left space-y-1 min-h-[220px]">
-          {displayed.map((line, i) => (
-            <motion.p
-              key={i}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className={`leading-relaxed ${
-                line === ""
-                  ? "h-4"
-                  : i === displayed.length - 1 && done
-                  ? "text-[#e8c97e] text-lg italic gold-glow"
-                  : "text-[#c8b89a] text-base"
-              }`}
-            >
-              {line}
-            </motion.p>
-          ))}
-
-          {/* Current typing line */}
-          {partial !== null && (
-            <p className="text-[#c8b89a] text-base leading-relaxed">
-              {partial}
-              <span className="cursor" />
-            </p>
-          )}
-        </div>
-
-        {/* CTA buttons — appear after typewriter */}
-        <AnimatePresence>
-          {showButtons && (
-            <motion.div
-              className="mt-14 flex flex-col sm:flex-row gap-4 items-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            >
-              {/* ACCEPT QUEST */}
-              <motion.button
-                onClick={() => setShowModal(true)}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                className="btn-accept relative px-10 py-4 bg-[#e8781e] text-[#0a0806] font-display text-xs tracking-[0.2em] uppercase rounded-sm ember-glow transition-all"
-              >
-                ▶ Accept Quest
-              </motion.button>
-
-              {/* REJECT QUEST */}
-              <motion.button
-                whileHover={{ scale: 1.02, borderColor: "rgba(232,201,126,0.5)" }}
-                whileTap={{ scale: 0.97 }}
-                className="px-10 py-4 border border-[#4a3f2e] text-[#6a5a40] font-display text-xs tracking-[0.2em] uppercase rounded-sm hover:text-[#8a7560] transition-all"
-                onClick={() => window.history.back()}
-              >
-                ✕ Reject Quest
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Fragment row — fades in after buttons */}
-        <AnimatePresence>
-          {showButtons && (
-            <motion.div
-              className="mt-16 flex items-center gap-3 flex-wrap justify-center"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.7 }}
-            >
-              {FRAGMENTS.map((f, i) => (
-                <motion.div
-                  key={f.name}
-                  className="relative group"
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.55 + i * 0.06 }}
-                  whileHover={{ scale: 1.15, y: -4 }}
-                >
-                  <div className="w-10 h-10 rounded border border-[#3a2e1e]/60 bg-[#0f0a05] p-1 group-hover:border-[#e8c97e]/50 transition-colors">
-                    <img
-                      src={f.src}
-                      alt={f.name}
-                      className="w-full h-full object-contain pixelated"
-                    />
-                  </div>
-                  {/* tooltip */}
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-[#1a1208] border border-[#e8c97e]/20 text-[9px] text-[#e8c97e] font-mono-px whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none rounded">
-                    {f.name}
-                  </div>
-                </motion.div>
-              ))}
-              <motion.div
-                className="text-[10px] text-[#4a3f2e] font-mono-px ml-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.2 }}
-              >
-                8 / 8 relics
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Bottom pixel border */}
-        <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.4 }}
-          transition={{ delay: 2 }}
-        >
-          <span className="font-mono-px text-[9px] text-[#3a2e1e] tracking-widest">SCROLL TO EXPLORE</span>
-        </motion.div>
-      </div>
-
-      {/* ── Twitter sign-in modal ── */}
+      {/* ── Dialog: Connect X ── */}
       <AnimatePresence>
-        {showModal && <TwitterModal onClose={() => setShowModal(false)} />}
+        {dialog === "connect" && (
+          <PixelDialog
+            title="Identity Required"
+            body="The realm demands proof of who you are. Connect your X account to enter."
+            options={[
+              { label:"Connect X", primary:true, loading:connecting, action:handleConnect },
+              { label:"Back", action:()=>{ if(!connecting) setDialog("confirm"); } },
+            ]}
+          />
+        )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }
