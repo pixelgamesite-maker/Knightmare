@@ -67,16 +67,11 @@ export default function Hunt() {
           className="relative w-56 h-56 mb-10 cursor-pointer"
           onClick={!opening ? openChest : undefined}>
           <div className="absolute inset-0 bg-purple-600/20 blur-3xl rounded-full" />
-          <img src={`${CDN}/chest.png`} alt="chest"
+          <img
+            src={opening ? `${CDN}/chest-open.png` : `${CDN}/chest-close.png`}
+            alt="chest"
             className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_30px_rgba(168,85,247,0.5)]"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-          {/* Fallback if no chest.png uploaded */}
-          <div className="absolute inset-0 flex items-center justify-center z-0">
-            <div className="w-40 h-32 bg-amber-900/60 border-4 border-amber-600 rounded-lg relative">
-              <div className="absolute top-0 left-0 right-0 h-1/2 bg-amber-800/80 rounded-t" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-amber-400 rounded-full border-2 border-amber-200" />
-            </div>
-          </div>
+          />
         </motion.div>
 
         <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
