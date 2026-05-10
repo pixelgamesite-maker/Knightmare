@@ -7,61 +7,62 @@ export default function AuthCallback() {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    // Listen for SIGNED_IN instead of calling getSession immediately
-    // This fixes the PKCE race condition
+    let handled = false;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (handled) return;
         if (event === "SIGNED_IN" && session) {
-          const u = session.user;
-
-          const { error } = await supabase.from("players").upsert(
-            {
-              id:           u.id,
-              twitter_id:   u.user_metadata?.provider_id ?? null,
-              username:     u.user_metadata?.user_name   ?? null,
-              display_name: u.user_metadata?.full_name   ?? null,
-              avatar_url:   u.user_metadata?.avatar_url  ?? null,
-            },
-            { onConflict: "id" }
-          );
-
-          if (error) console.error("Upsert error:", error.message);
-
-          subscription.unsubscribe();
-          navigate("/fragments");
-        }
-
-        if (event === "SIGNED_OUT") {
-          setFailed(true);
+          handled = true;
+          await persist(session.user);
         }
       }
     );
 
-    // Fallback timeout — if nothing fires in 10s, show error
-    const timeout = setTimeout(() => setFailed(true), 10000);
-    return () => {
-      clearTimeout(timeout);
-      subscription.unsubscribe();
-    };
+    supabase.auth.getSession().then(({ data }) => {
+      if (!handled && data.session) {
+        handled = true;
+        persist(data.session.user);
+      }
+    });
+
+    const timeout = setTimeout(() => { if (!handled) setFailed(true); }, 10000);
+
+    async function persist(u: any) {
+      const meta = u.user_metadata || {};
+      const username = meta.preferred_username || meta.user_name || meta.screen_name || null;
+      const displayName = meta.name || meta.full_name || username || null;
+      const avatarUrl = meta.avatar_url || meta.profile_image_url || null;
+      const twitterId = meta.provider_id || meta.sub || null;
+
+      const { error } = await supabase.from("players").upsert({
+        id: u.id,
+        twitter_id: twitterId,
+        username: username,
+        display_name: displayName,
+        avatar_url: avatarUrl,
+      }, { onConflict: "id", ignoreDuplicates: false });
+
+      if (error) { console.error(error.message); setFailed(true); return; }
+      navigate("/hunt");
+    }
+
+    return () => { clearTimeout(timeout); subscription.unsubscribe(); };
   }, [navigate]);
 
   if (failed) return (
-    <div style={{ minHeight:"100vh", background:"#04020c", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:16 }}>
-      <p style={{ fontFamily:"'Press Start 2P',monospace", color:"#ef4444", fontSize:10, letterSpacing:"0.15em" }}>
-        AUTH FAILED
-      </p>
+    <div className="min-h-[100dvh] bg-[#04020c] flex flex-col items-center justify-center gap-4">
+      <p className="font-['Press_Start_2P'] text-[10px] text-red-500 tracking-widest">AUTH FAILED</p>
       <button onClick={() => navigate("/")}
-        style={{ fontFamily:"'Press Start 2P',monospace", fontSize:8, color:"#a855f7", background:"none", border:"2px solid #3b1d6e", padding:"10px 24px", cursor:"pointer" }}>
+        className="font-['Press_Start_2P'] text-[8px] text-[#a855f7] bg-transparent border-2 border-[#3b1d6e] px-6 py-2">
         RETURN
       </button>
     </div>
   );
 
   return (
-    <div style={{ minHeight:"100vh", background:"#04020c", display:"flex", alignItems:"center", justifyContent:"center" }}>
-      <p style={{ fontFamily:"'Press Start 2P',monospace", color:"#3b1d6e", fontSize:9, letterSpacing:"0.2em" }}>
-        ENTERING REALM...
-      </p>
+    <div className="min-h-[100dvh] bg-[#04020c] flex items-center justify-center">
+      <p className="font-['Press_Start_2P'] text-[9px] text-[#3b1d6e] tracking-[0.2em]">ENTERING REALM...</p>
     </div>
   );
 }
