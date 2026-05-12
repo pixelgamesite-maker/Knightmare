@@ -11,6 +11,9 @@ export default function Forge() {
   const { inventory, invalidate: refreshInv } = useInventory();
   const [forging, setForging] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [walletModal, setWalletModal] = useState<string | null>(null);
+  const [wallet, setWallet] = useState("");
+  const [submittingWallet, setSubmittingWallet] = useState(false);
 
   const unique = Object.entries(inventory).filter(([_, q]) => (q as number) > 0).length;
 
@@ -19,10 +22,29 @@ export default function Forge() {
     const { data } = await supabase.rpc("attempt_forge", { p_type: type });
     setForging(null);
     if (data?.success) {
-      setResult(type); refreshPlayer(); refreshInv();
+      setResult(type);
+      refreshPlayer();
+      refreshInv();
+      setWalletModal(type); // open wallet modal
+    } else {
+      alert(data?.error || "Forge failed");
+    }
+  };
+
+  const submitWallet = async () => {
+    if (!wallet.trim()) return;
+    setSubmittingWallet(true);
+    const { data } = await supabase.rpc("submit_forge_wallet", {
+      p_type: walletModal,
+      p_wallet: wallet.trim(),
+    });
+    setSubmittingWallet(false);
+    if (data?.success) {
+      setWalletModal(null);
+      setWallet("");
       setTimeout(() => setResult(null), 3000);
     } else {
-      alert(data?.error);
+      alert(data?.error || "Wallet save failed");
     }
   };
 
@@ -67,7 +89,7 @@ export default function Forge() {
         </div>
 
         <AnimatePresence>
-          {result && (
+          {result && !walletModal && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
               className="mt-6 bg-[#7c3aed]/20 border-2 border-[#a855f7] p-4 rounded text-center">
               <p className="font-['Press_Start_2P'] text-[10px] text-[#a855f7]">
@@ -77,6 +99,50 @@ export default function Forge() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Wallet Submission Modal */}
+      <AnimatePresence>
+        {walletModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0a0614] border-2 border-[#7c3aed] p-6 rounded max-w-sm w-full relative"
+              style={{ boxShadow: "0 0 40px rgba(124,58,237,0.3)" }}>
+              <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#22d3ee]" />
+              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#22d3ee]" />
+              
+              <p className="font-['Press_Start_2P'] text-[10px] text-[#a855f7] mb-2 text-center">
+                {walletModal === "gtd" ? "GTD ARTIFACT SECURED!" : "FCFS ARTIFACT SECURED!"}
+              </p>
+              <p className="text-[10px] text-[#6b5a80] text-center mb-4">
+                Enter your wallet address to claim your artifact.
+              </p>
+              
+              <input
+                type="text"
+                value={wallet}
+                onChange={(e) => setWallet(e.target.value)}
+                placeholder="0x... or wallet address"
+                className="w-full bg-[#04020c] border border-[#2d1a4e] rounded px-3 py-2 text-[10px] text-white placeholder-[#2d1a4e] focus:border-[#a855f7] focus:outline-none mb-4 font-mono"
+              />
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setWalletModal(null); setWallet(""); }}
+                  className="flex-1 font-['Press_Start_2P'] text-[8px] px-3 py-2 rounded border border-[#2d1a4e] text-[#6b5a80] hover:border-[#6b5a80] transition-colors">
+                  SKIP
+                </button>
+                <button
+                  onClick={submitWallet}
+                  disabled={!wallet.trim() || submittingWallet}
+                  className="flex-1 font-['Press_Start_2P'] text-[8px] px-3 py-2 rounded bg-[#7c3aed] border border-[#a855f7] text-white hover:bg-[#9333ea] disabled:opacity-30 transition-colors">
+                  {submittingWallet ? "..." : "SUBMIT"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
