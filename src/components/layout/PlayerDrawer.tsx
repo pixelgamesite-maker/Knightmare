@@ -26,6 +26,10 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
 
   const go = (path: string) => { navigate(path); onClose(); };
 
+  const referralLink = typeof window !== "undefined" 
+    ? `${window.location.origin}/?ref=${player?.referral_code}` 
+    : `/?ref=${player?.referral_code}`;
+
   return (
     <AnimatePresence>
       {open && (
@@ -83,17 +87,31 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               </div>
             </div>
 
-            {/* Referral */}
+            {/* Referral LINK */}
             <div className="p-4 border-b-2 border-[#1a0a2e]">
               <p className="font-['Press_Start_2P'] text-[8px] text-[#a855f7] mb-2 tracking-widest">// REFERRAL //</p>
+              
               <div className="bg-[#0d0420] rounded border border-[#2d1a4e] p-2 mb-3 relative">
                 <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-[#a855f7]" />
-                <p className="text-[11px] text-cyan-400 font-mono tracking-wider">{player?.referral_code || "..."}</p>
-                <p className="text-[7px] text-[#6b5a80] mt-0.5">YOUR CODE</p>
+                <p className="text-[8px] text-cyan-400 font-mono break-all leading-tight">
+                  {referralLink}
+                </p>
+                <p className="text-[7px] text-[#6b5a80] mt-0.5">YOUR LINK</p>
               </div>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(referralLink);
+                  setMsg("Link copied!");
+                  setTimeout(() => setMsg(null), 2000);
+                }}
+                className="w-full py-2 bg-[#7c3aed] border-2 border-[#a855f7] rounded font-['Press_Start_2P'] text-[8px] text-white hover:bg-[#9333ea] mb-3">
+                COPY LINK
+              </button>
+
               {!player?.referred_by && (
                 <div className="flex gap-2">
-                  <input value={code} onChange={e => setCode(e.target.value)} placeholder="ENTER CODE"
+                  <input value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ENTER CODE"
                     className="flex-1 bg-[#0d0420] border border-[#2d1a4e] rounded px-2 py-1.5 text-[9px] text-white outline-none focus:border-[#7c3aed] font-mono uppercase placeholder:text-[#2d1a4e]" />
                   <button onClick={applyRef}
                     className="bg-[#7c3aed] text-white text-[7px] px-3 rounded font-['Press_Start_2P'] hover:bg-[#9333ea] border border-[#a855f7]">
@@ -101,7 +119,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
                   </button>
                 </div>
               )}
-              {msg && <p className={`text-[8px] mt-2 font-['Press_Start_2P'] ${msg.includes("+")?"text-amber-400":"text-red-400"}`}>{msg}</p>}
+              {msg && <p className={`text-[8px] mt-2 font-['Press_Start_2P'] ${msg.includes("copied") || msg.includes("+") ? "text-amber-400" : "text-red-400"}`}>{msg}</p>}
             </div>
 
             {/* Nav */}
@@ -109,7 +127,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               <DrawerBtn onClick={() => go("/hunt")}>⚔ HUNT</DrawerBtn>
               <DrawerBtn onClick={() => go("/forge")}>⚒ FORGE</DrawerBtn>
               <DrawerBtn onClick={() => go("/trades")}>⇄ TRADES</DrawerBtn>
-              <DrawerBtn onClick={() => go("/leaderboard")}>🏆 RANK</DrawerBtn>
+              <DrawerBtn onClick={() => go("/leaderboard")}>🏆 LEADERBOARD</DrawerBtn>
               <DrawerBtn onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                 className="text-red-400/70 hover:text-red-400 border-red-900/30 hover:border-red-900/50">
                 ✕ SIGN OUT
