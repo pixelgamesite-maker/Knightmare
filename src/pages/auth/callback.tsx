@@ -9,33 +9,19 @@ export default function AuthCallback() {
   useEffect(() => {
     let handled = false;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (handled) return;
-        if (event === "SIGNED_IN" && session) {
-          handled = true;
-          await persist(session.user);
-        }
-      }
-    );
+    const processAuth = async (session: any) => {
+      if (handled || !session) return;
+      handled = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!handled && data.session) {
-        handled = true;
-        persist(data.session.user);
-      }
-    });
-
-    const timeout = setTimeout(() => { if (!handled) setFailed(true); }, 10000);
-
-    async function persist(u: any) {
+      const u = session.user;
       const meta = u.user_metadata || {};
       const username = meta.preferred_username || meta.user_name || meta.screen_name || null;
       const displayName = meta.name || meta.full_name || username || null;
       const avatarUrl = meta.avatar_url || meta.profile_image_url || null;
       const twitterId = meta.provider_id || meta.sub || null;
 
-      const { error } = await supabase.from("players").upsert({
+      // 1. Upsert player profile
+      const { error: upsertError } = await supabase.from("players").upsert({
         id: u.id,
         twitter_id: twitterId,
         username: username,
@@ -43,19 +29,64 @@ export default function AuthCallback() {
         avatar_url: avatarUrl,
       }, { onConflict: "id", ignoreDuplicates: false });
 
-      if (error) { console.error(error.message); setFailed(true); return; }
+      if (upsertError) {
+        console.error("Profile upsert failed:", upsertError.message);
+        setFailed(true);
+        return;
+      }
 
-      // Apply pending referral from landing page
-      const pendingRef = sessionStorage.getItem("pending_referral");
+      // 2. Check for pending referral from URL
+      // Try sessionStorage first, then fallback to URL params directly
+      let pendingRef = sessionStorage.getItem("pending_referral");
+      
+      if (!pendingRef && typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        pendingRef = params.get("ref") || null;
+      }
+
       if (pendingRef) {
-        await supabase.rpc("apply_referral", { p_code: pendingRef });
-        sessionStorage.removeItem("pending_referral");
+        console.log("Applying referral:", pendingRef);
+        const { data, error } = await supabase.rpc("apply_referral", { 
+          p_code: pendingRef.toUpperCase() 
+        });
+        
+        if (error) {
+          console.error("Referral RPC error:", error.message);
+        } else if (data?.success) {
+          console.log("Referral applied! Bonus:", data.bonus);
+          sessionStorage.removeItem("pending_referral");
+        } else {
+          console.log("Referral failed:", data?.error);
+        }
       }
 
       navigate("/hunt");
-    }
+    };
 
-    return () => { clearTimeout(timeout); subscription.unsubscribe(); };
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_IN" && session) {
+          await processAuth(session);
+        }
+      }
+    );
+
+    // Fallback: check if session already exists
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        processAuth(data.session);
+      }
+    });
+
+    const timeout = setTimeout(() => {
+      if (!handled) setFailed(true);
+    }, 15000);
+
+    return () => {
+      clearTimeout(timeout);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   if (failed) return (
