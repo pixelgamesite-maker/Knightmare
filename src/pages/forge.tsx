@@ -54,15 +54,15 @@ export default function Forge() {
           </div>
           <div className="h-2 bg-[#04020c] rounded-full overflow-hidden border border-[#1a0a2e]">
             <motion.div className="h-full bg-gradient-to-r from-[#7c3aed] to-[#a855f7]"
-              initial={{ width: 0 }} animate={{ width: `${(unique / 8) * 100}%` }} />
+              initial={{ width: 0 }} animate={{ width: `${(unique / 7) * 100}%` }} />
           </div>
-          <p className="text-[8px] text-[#6b5a80] mt-1 text-right">{unique}/8 UNIQUE</p>
+          <p className="text-[8px] text-[#6b5a80] mt-1 text-right">{unique}/7 UNIQUE</p>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4">
-          <ForgeCard title="GTD ARTIFACT" desc="Requires all 8 unique fragments." ready={unique >= 8 && !player?.forged_gtd}
+          <ForgeCard title="GTD ARTIFACT" desc="Requires all 7 unique fragments." ready={unique >= 7 && !player?.forged_gtd}
             done={player?.forged_gtd} onForge={() => forge("gtd")} forging={forging === "gtd"} />
-          <ForgeCard title="FCFS ARTIFACT" desc="Requires 6 unique fragments." ready={unique >= 6 && !player?.forged_fcfs}
+          <ForgeCard title="FCFS ARTIFACT" desc="Requires 4 unique fragments." ready={unique >= 4 && !player?.forged_fcfs}
             done={player?.forged_fcfs} onForge={() => forge("fcfs")} forging={forging === "fcfs"} />
         </div>
 
