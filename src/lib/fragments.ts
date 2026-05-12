@@ -8,5 +8,4 @@ export const FRAGMENTS: Record<string, { name: string; file: string }> = {
   boots:                   { name: "Boots Fragment", file: "boots.png" },
   potion:                  { name: "Doom Potion", file: "potion.png" },
   "book-of-reincarnation": { name: "Book of Reincarnation", file: "book-of-reincarnation.png" },
-  // dragon_heart REMOVED
 };
