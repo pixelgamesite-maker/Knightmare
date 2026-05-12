@@ -9,7 +9,6 @@ import Landing from "@/pages/landing";
 import Hunt from "@/pages/hunt";
 import Forge from "@/pages/forge";
 import Trades from "@/pages/trades";
-import Leaderboard from "@/pages/leaderboard";
 import AuthCallback from "@/pages/auth/callback";
 import NotFound from "@/pages/not-found";
 
@@ -30,7 +29,6 @@ function Router() {
           <Route path="/hunt" component={user ? Hunt : () => <Redirect to="/" />} />
           <Route path="/forge" component={user ? Forge : () => <Redirect to="/" />} />
           <Route path="/trades" component={user ? Trades : () => <Redirect to="/" />} />
-          <Route path="/leaderboard" component={Leaderboard} />
           <Route component={NotFound} />
         </Switch>
       </main>
