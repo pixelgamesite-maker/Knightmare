@@ -44,6 +44,14 @@ export default function AuthCallback() {
       }, { onConflict: "id", ignoreDuplicates: false });
 
       if (error) { console.error(error.message); setFailed(true); return; }
+
+      // Apply pending referral from landing page
+      const pendingRef = sessionStorage.getItem("pending_referral");
+      if (pendingRef) {
+        await supabase.rpc("apply_referral", { p_code: pendingRef });
+        sessionStorage.removeItem("pending_referral");
+      }
+
       navigate("/hunt");
     }
 
