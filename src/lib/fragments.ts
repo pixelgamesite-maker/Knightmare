@@ -3,7 +3,7 @@ export const CDN = "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/p
 export const FRAGMENTS: Record<string, { name: string; file: string }> = {
   sword: { name: "Sword", file: "sword.png" },
   helm: { name: "Helm", file: "helm.png" },
-  plate: { name: "Armor", file: "amor.png" },
+  plate: { name: "Armor", file: "armor.png" },
   gloves: { name: "Gloves", file: "gloves.png" },
   boots: { name: "Boots", file: "boots.png" },
   doom_potion: { name: "Doom Potion", file: "potion.png" },
