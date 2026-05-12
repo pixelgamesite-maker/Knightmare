@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlayer } from "@/hooks/usePlayer";
 import { useInventory } from "@/hooks/useInventory";
@@ -6,23 +6,70 @@ import { supabase } from "@/lib/supabase";
 import { FRAGMENTS, CDN } from "@/lib/fragments";
 import TopBar from "@/components/layout/TopBar";
 
+type LootItem =
+  | { type: "fragment"; fragment: string }
+  | { type: "gold"; amount: number }
+  | { type: "empty" };
+
+type AggregatedLoot = {
+  fragments: Record<string, number>;
+  gold: number;
+  empty: number;
+  total: number;
+};
+
 export default function Hunt() {
   const { player, invalidate: refreshPlayer } = usePlayer();
   const { invalidate: refreshInv } = useInventory();
-  const [loot, setLoot] = useState<any>(null);
+  const [loot, setLoot] = useState<AggregatedLoot | null>(null);
   const [opening, setOpening] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const [count, setCount] = useState(1);
 
-  const openChest = async () => {
-    if ((player?.gold || 0) < 500) return;
+  const maxChests = useMemo(() => {
+    return Math.floor((player?.gold || 0) / 500);
+  }, [player?.gold]);
+
+  const cappedCount = Math.min(count, maxChests);
+  const totalCost = cappedCount * 500;
+
+  const setMax = () => setCount(maxChests);
+
+  const openChests = async () => {
+    if (maxChests < 1 || cappedCount < 1) return;
+
     setOpening(true);
-    const { data } = await supabase.rpc("open_chest");
+    const aggregated: AggregatedLoot = {
+      fragments: {},
+      gold: 0,
+      empty: 0,
+      total: cappedCount,
+    };
+
+    // Fire all chest opens in parallel
+    const promises = Array.from({ length: cappedCount }, () =>
+      supabase.rpc("open_chest")
+    );
+
+    const results = await Promise.all(promises);
+
+    results.forEach(({ data }) => {
+      if (!data?.success) return;
+      if (data.type === "fragment") {
+        const key = data.fragment as string;
+        aggregated.fragments[key] = (aggregated.fragments[key] || 0) + 1;
+      } else if (data.type === "gold") {
+        aggregated.gold += (data.amount as number) || 0;
+      } else if (data.type === "empty") {
+        aggregated.empty += 1;
+      }
+    });
+
     setOpening(false);
-    if (data?.success) {
-      setLoot(data);
-      refreshPlayer(); refreshInv();
-      setTimeout(() => setLoot(null), 3500);
-    }
+    setLoot(aggregated);
+    refreshPlayer();
+    refreshInv();
+    setTimeout(() => setLoot(null), 5000);
   };
 
   const claimGold = async () => {
@@ -44,6 +91,9 @@ export default function Hunt() {
     return `${h}h ${m}m`;
   };
 
+  // Generate tick marks for the slider
+  const ticks = [1, 25, 50, 75, 100];
+
   return (
     <div className="min-h-[100dvh] bg-[#04020c] text-white relative overflow-hidden">
       <TopBar />
@@ -53,83 +103,232 @@ export default function Hunt() {
         style={{ background: "radial-gradient(ellipse 100% 100% at 50% 50%,transparent 40%,rgba(4,2,12,0.9) 100%)" }} />
 
       <div className="pt-24 pb-10 px-4 flex flex-col items-center justify-center min-h-[100dvh] relative z-20">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 text-center">
           <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80] mb-2">CHEST COST</p>
           <p className="font-['Press_Start_2P'] text-[14px] text-amber-400" style={{ textShadow: "0 0 15px rgba(251,191,36,0.4)" }}>
             500 GOLD
           </p>
         </motion.div>
 
+        {/* Lever / Slider Control */}
+        <div className="w-full max-w-xs mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">QUANTITY</span>
+            <div className="flex items-center gap-3">
+              <span className="font-['VT323'] text-xl text-cyan-400">{cappedCount}</span>
+              <button
+                onClick={setMax}
+                disabled={maxChests < 1}
+                className="font-['Press_Start_2P'] text-[7px] px-2 py-1 bg-[#1a0a2e] border border-[#7c3aed] text-[#a855f7] rounded hover:bg-[#7c3aed] hover:text-white transition-colors disabled:opacity-30"
+              >
+                MAX
+              </button>
+            </div>
+          </div>
+
+          <div className="relative h-10 flex items-center">
+            {/* Track background */}
+            <div className="absolute w-full h-2 bg-[#1a0a2e] rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-[#7c3aed] to-[#22d3ee]"
+                initial={false}
+                animate={{ width: `${maxChests > 0 ? (cappedCount / maxChests) * 100 : 0}%` }}
+              />
+            </div>
+            {/* Native range input for accessibility + drag */}
+            <input
+              type="range"
+              min={1}
+              max={Math.max(1, maxChests)}
+              value={cappedCount}
+              onChange={(e) => setCount(Number(e.target.value))}
+              disabled={maxChests < 1 || opening}
+              className="absolute w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-20"
+            />
+            {/* Thumb visual */}
+            <motion.div
+              className="absolute top-1/2 -translate-y-1/2 w-5 h-8 bg-[#0a0614] border-2 border-[#22d3ee] rounded shadow-[0_0_10px_rgba(34,211,238,0.5)] z-10 pointer-events-none flex items-center justify-center"
+              initial={false}
+              animate={{
+                left: `calc(${maxChests > 0 ? (cappedCount / maxChests) * 100 : 0}% - 10px)`,
+              }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            >
+              <div className="w-1 h-4 bg-[#22d3ee]/50 rounded-full" />
+            </motion.div>
+          </div>
+
+          {/* Tick labels */}
+          <div className="flex justify-between mt-1 px-0.5">
+            {ticks.map((t) => (
+              <span
+                key={t}
+                className={`font-['Press_Start_2P'] text-[6px] ${t <= maxChests ? "text-[#4a3a5e]" : "text-[#1a0a2e]"}`}
+              >
+                {t > maxChests ? "" : t}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Total cost preview */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mb-6 text-center"
+        >
+          <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">TOTAL COST</p>
+          <p className="font-['VT323'] text-lg text-amber-400/80">{totalCost.toLocaleString()} GOLD</p>
+        </motion.div>
+
         {/* Chest */}
         <motion.div
-          animate={opening ? { scale: [1,1.08,0.95,1.05,1], rotate: [0,-3,3,-2,0] } : {}}
+          animate={opening ? { scale: [1, 1.08, 0.95, 1.05, 1], rotate: [0, -3, 3, -2, 0] } : {}}
           transition={{ repeat: opening ? Infinity : 0, duration: 0.8 }}
           className="relative w-56 h-56 mb-10 cursor-pointer"
-          onClick={!opening ? openChest : undefined}>
+          onClick={!opening ? openChests : undefined}
+        >
           <div className="absolute inset-0 bg-purple-600/20 blur-3xl rounded-full" />
           <img
             src={opening ? `${CDN}/chest-open.png` : `${CDN}/chest-close.png`}
             alt="chest"
             className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_30px_rgba(168,85,247,0.5)]"
           />
+          {cappedCount > 1 && !opening && (
+            <div className="absolute -top-2 -right-2 bg-[#7c3aed] text-white font-['Press_Start_2P'] text-[8px] px-2 py-1 rounded border border-[#a855f7] z-20">
+              x{cappedCount}
+            </div>
+          )}
         </motion.div>
 
-        <motion.button whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
-          onClick={openChest} disabled={opening || (player?.gold || 0) < 500}
+        <motion.button
+          whileHover={{ scale: 1.04 }}
+          whileTap={{ scale: 0.96 }}
+          onClick={openChests}
+          disabled={opening || maxChests < 1}
           className="relative font-['Press_Start_2P'] text-[10px] px-10 py-4 bg-[#7c3aed] text-white rounded disabled:opacity-30 disabled:cursor-not-allowed border-2 border-[#a855f7] tracking-wider"
-          style={{ boxShadow: "0 0 20px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
-          {opening ? "OPENING..." : "OPEN CRATE"}
+          style={{ boxShadow: "0 0 20px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}
+        >
+          {opening ? "OPENING..." : `OPEN x${cappedCount}`}
           <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-[#22d3ee]" />
           <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
         </motion.button>
 
         <div className="mt-6 text-center">
-          <motion.button whileHover={{ scale: canClaim ? 1.05 : 1 }} whileTap={{ scale: canClaim ? 0.95 : 1 }}
-            onClick={claimGold} disabled={!canClaim || claiming}
+          <motion.button
+            whileHover={{ scale: canClaim ? 1.05 : 1 }}
+            whileTap={{ scale: canClaim ? 0.95 : 1 }}
+            onClick={claimGold}
+            disabled={!canClaim || claiming}
             className={`font-['Press_Start_2P'] text-[8px] px-6 py-2 rounded border-2 tracking-wider transition-all ${
-              canClaim ? "bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/30" :
-              "bg-[#0d0420] border-[#1a0a2e] text-[#2d1a4e] cursor-not-allowed"}`}>
+              canClaim
+                ? "bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/30"
+                : "bg-[#0d0420] border-[#1a0a2e] text-[#2d1a4e] cursor-not-allowed"
+            }`}
+          >
             {claiming ? "..." : canClaim ? "CLAIM GOLD (100-200)" : `CLAIM IN ${fmt(msLeft)}`}
           </motion.button>
         </div>
 
         <div className="mt-8 flex gap-6 text-center">
-          <div><p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">OPENED</p><p className="text-[10px] text-cyan-400 mt-1">{player?.total_chests_opened||0}</p></div>
-          <div><p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">GTD</p><p className="text-[10px] text-purple-400 mt-1">{player?.forged_gtd?"YES":"NO"}</p></div>
-          <div><p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">FCFS</p><p className="text-[10px] text-purple-400 mt-1">{player?.forged_fcfs?"YES":"NO"}</p></div>
+          <div>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">OPENED</p>
+            <p className="text-[10px] text-cyan-400 mt-1">{player?.total_chests_opened || 0}</p>
+          </div>
+          <div>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">GTD</p>
+            <p className="text-[10px] text-purple-400 mt-1">{player?.forged_gtd ? "YES" : "NO"}</p>
+          </div>
+          <div>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">FCFS</p>
+            <p className="text-[10px] text-purple-400 mt-1">{player?.forged_fcfs ? "YES" : "NO"}</p>
+          </div>
         </div>
       </div>
 
+      {/* Aggregated Loot Modal */}
       <AnimatePresence>
         {loot && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
-            <motion.div initial={{ scale: 0, rotate: -10 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0, rotate: 10 }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 10 }}
               transition={{ type: "spring", damping: 15 }}
-              className="bg-[#0a0614] border-2 border-[#7c3aed] p-8 rounded text-center relative max-w-xs w-full mx-4"
-              style={{ boxShadow: "0 0 40px rgba(124,58,237,0.3)" }}>
+              className="bg-[#0a0614] border-2 border-[#7c3aed] p-6 rounded text-center relative max-w-sm w-full max-h-[80dvh] overflow-y-auto"
+              style={{ boxShadow: "0 0 40px rgba(124,58,237,0.3)" }}
+            >
               <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#22d3ee]" />
               <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#22d3ee]" />
-              {loot.type === "fragment" && (
-                <>
-                  <motion.img initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}
-                    src={`${CDN}/${FRAGMENTS[loot.fragment].file}`} className="w-20 h-20 mx-auto mb-4 object-contain drop-shadow-[0_0_15px_rgba(168,85,247,0.6)]" alt="" />
-                  <p className="font-['Press_Start_2P'] text-[10px] text-cyan-400 mb-2">FRAGMENT FOUND!</p>
-                  <p className="font-['VT323'] text-xl text-[#c4b5d4]">{FRAGMENTS[loot.fragment].name}</p>
-                </>
-              )}
-              {loot.type === "gold" && (
-                <>
-                  <p className="font-['Press_Start_2P'] text-[24px] text-amber-400 mb-2" style={{ textShadow: "0 0 20px rgba(251,191,36,0.5)" }}>+{loot.amount}</p>
-                  <p className="font-['Press_Start_2P'] text-[10px] text-amber-400/70">GOLD!</p>
-                </>
-              )}
-              {loot.type === "empty" && (
-                <>
-                  <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80] mb-2">EMPTY CRATE</p>
-                  <p className="font-['VT323'] text-lg text-[#2d1a4e]">Nothing but dust...</p>
-                </>
-              )}
+
+              <p className="font-['Press_Start_2P'] text-[10px] text-cyan-400 mb-1">CRATES OPENED</p>
+              <p className="font-['VT323'] text-2xl text-white mb-4">{loot.total}</p>
+
+              <div className="space-y-3">
+                {/* Gold Summary */}
+                {loot.gold > 0 && (
+                  <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-amber-500/10 border border-amber-500/30 rounded p-3"
+                  >
+                    <p className="font-['Press_Start_2P'] text-[16px] text-amber-400" style={{ textShadow: "0 0 20px rgba(251,191,36,0.5)" }}>
+                      +{loot.gold.toLocaleString()}
+                    </p>
+                    <p className="font-['Press_Start_2P'] text-[8px] text-amber-400/70 mt-1">TOTAL GOLD</p>
+                  </motion.div>
+                )}
+
+                {/* Fragments Summary */}
+                {Object.entries(loot.fragments).map(([key, qty], i) => (
+                  <motion.div
+                    key={key}
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 + i * 0.08 }}
+                    className="flex items-center gap-3 bg-[#1a0a2e] border border-[#7c3aed]/30 rounded p-3"
+                  >
+                    <img
+                      src={`${CDN}/${FRAGMENTS[key].file}`}
+                      alt=""
+                      className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                    />
+                    <div className="text-left flex-1">
+                      <p className="font-['VT323'] text-lg text-[#c4b5d4]">{FRAGMENTS[key].name}</p>
+                      <p className="font-['Press_Start_2P'] text-[8px] text-cyan-400">x{qty}</p>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Empty crates */}
+                {loot.empty > 0 && (
+                  <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="bg-[#0d0420] border border-[#2d1a4e] rounded p-3"
+                  >
+                    <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80]">
+                      {loot.empty} EMPTY {loot.empty === 1 ? "CRATE" : "CRATES"}
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setLoot(null)}
+                className="mt-5 font-['Press_Start_2P'] text-[8px] px-4 py-2 bg-[#7c3aed]/20 border border-[#7c3aed] text-[#a855f7] rounded hover:bg-[#7c3aed]/40 transition-colors"
+              >
+                CLOSE
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
