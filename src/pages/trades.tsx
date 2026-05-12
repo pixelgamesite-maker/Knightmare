@@ -30,7 +30,7 @@ export default function Trades() {
 
   const searchPlayers = async (q: string) => {
     setSearch(q);
-    setToPlayer(null); // reset selection when typing
+    setToPlayer(null);
     setErrorMsg(null);
     if (q.length < 2) { setResults([]); return; }
     const { data, error } = await supabase
@@ -60,16 +60,8 @@ export default function Trades() {
       setErrorMsg("Select what you're offering");
       return;
     }
-    if (!reqFrag) {
-      setErrorMsg("Select what you're requesting");
-      return;
-    }
     if (offerQty < 1) {
       setErrorMsg("Offer quantity must be at least 1");
-      return;
-    }
-    if (reqQty < 1) {
-      setErrorMsg("Request quantity must be at least 1");
       return;
     }
     if ((inventory[offerFrag] || 0) < offerQty) {
@@ -82,23 +74,20 @@ export default function Trades() {
       p_to_player_id: toPlayer,
       p_offered_fragment: offerFrag,
       p_offered_qty: offerQty,
-      p_requested_fragment: reqFrag,
-      p_requested_qty: reqQty,
+      p_requested_fragment: reqFrag || null,
+      p_requested_qty: reqFrag ? reqQty : 0,
     });
     setSending(false);
 
     if (rpcError) {
-      console.error("RPC error:", rpcError.message);
       setErrorMsg(rpcError.message);
       return;
     }
-
     if (!data?.success) {
       setErrorMsg(data?.error || "Trade failed");
       return;
     }
 
-    // Success
     refreshTrades();
     setTab("outgoing");
     setToPlayer(null);
@@ -150,12 +139,18 @@ export default function Trades() {
                   </div>
                   <span className="text-[8px] text-[#6b5a80]">FOR</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-amber-400">{t.requested_qty}x {FRAGMENTS[t.requested_fragment].name}</span>
-                    <img src={`${CDN}/${FRAGMENTS[t.requested_fragment].file}`} className="w-6 h-6" alt="" />
+                    {t.requested_fragment ? (
+                      <>
+                        <span className="text-[9px] text-amber-400">{t.requested_qty}x {FRAGMENTS[t.requested_fragment].name}</span>
+                        <img src={`${CDN}/${FRAGMENTS[t.requested_fragment].file}`} className="w-6 h-6" alt="" />
+                      </>
+                    ) : (
+                      <span className="text-[9px] text-emerald-400">FREE GIFT</span>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => accept(t.id)} className="w-full mt-2 py-1 bg-emerald-900/30 border border-emerald-800 rounded text-[8px] text-emerald-400 font-['Press_Start_2P'] hover:bg-emerald-900/50">
-                  ACCEPT
+                  {t.requested_fragment ? "ACCEPT" : "CLAIM GIFT"}
                 </button>
               </div>
             ))}
@@ -169,7 +164,11 @@ export default function Trades() {
               <div key={t.id} className="bg-[#0d0420] border-2 border-[#2d1a4e] p-3 rounded">
                 <div className="flex items-center justify-between">
                   <span className="text-[9px] text-cyan-400">You offer {t.offered_qty}x {FRAGMENTS[t.offered_fragment].name}</span>
-                  <span className="text-[9px] text-amber-400">For {t.requested_qty}x {FRAGMENTS[t.requested_fragment].name}</span>
+                  {t.requested_fragment ? (
+                    <span className="text-[9px] text-amber-400">For {t.requested_qty}x {FRAGMENTS[t.requested_fragment].name}</span>
+                  ) : (
+                    <span className="text-[9px] text-emerald-400">As gift</span>
+                  )}
                 </div>
                 <button onClick={() => cancel(t.id)} className="w-full mt-2 py-1 bg-red-900/30 border border-red-800 rounded text-[8px] text-red-400 font-['Press_Start_2P'] hover:bg-red-900/50">
                   CANCEL
@@ -218,16 +217,18 @@ export default function Trades() {
                   className="w-full bg-[#04020c] border border-[#2d1a4e] rounded px-2 py-1 text-[10px] text-white" />
               </div>
               <div>
-                <label className="text-[9px] text-[#6b5a80] block mb-1">YOU REQUEST</label>
+                <label className="text-[9px] text-[#6b5a80] block mb-1">YOU REQUEST (OPTIONAL)</label>
                 <select value={reqFrag} onChange={e => { setReqFrag(e.target.value); setErrorMsg(null); }}
                   className="w-full bg-[#04020c] border border-[#2d1a4e] rounded px-2 py-1 text-[10px] text-white mb-1">
-                  <option value="">Select</option>
+                  <option value="">Nothing (Gift)</option>
                   {Object.keys(FRAGMENTS).map(k => (
                     <option key={k} value={k}>{FRAGMENTS[k].name}</option>
                   ))}
                 </select>
-                <input type="number" min={1} value={reqQty} onChange={e => setReqQty(Math.max(1, Number(e.target.value)))}
-                  className="w-full bg-[#04020c] border border-[#2d1a4e] rounded px-2 py-1 text-[10px] text-white" />
+                {reqFrag && (
+                  <input type="number" min={1} value={reqQty} onChange={e => setReqQty(Math.max(1, Number(e.target.value)))}
+                    className="w-full bg-[#04020c] border border-[#2d1a4e] rounded px-2 py-1 text-[10px] text-white" />
+                )}
               </div>
             </div>
 
