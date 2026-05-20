@@ -29,7 +29,7 @@ export default function Gallery() {
           >
             👁 SNEAK PEEKS
           </h1>
-          <p className="text-[10px] text-[#6b5a80] font-['VT323'] text-lg">
+          <p className="text-[#6b5a80] font-['VT323'] text-lg">
             {peeks.length.toLocaleString()} knights await. Forge an artifact to reveal yours.
           </p>
         </motion.div>
@@ -46,7 +46,7 @@ export default function Gallery() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: Math.min(i * 0.002, 0.5) }}
-                className={`aspect-square bg-[#0d0420] border rounded overflow-hidden transition-all ${
+                className={`relative aspect-square bg-[#0d0420] border rounded overflow-hidden transition-all ${
                   peek.assigned_to
                     ? "border-emerald-900/50 opacity-40"
                     : "border-[#1a0a2e] hover:border-[#7c3aed]"
@@ -61,8 +61,8 @@ export default function Gallery() {
                   loading="lazy"
                 />
                 {peek.assigned_to && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-['Press_Start_2P'] text-[8px] text-emerald-400/50">
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                    <span className="font-['Press_Start_2P'] text-[8px] text-emerald-400/80">
                       CLAIMED
                     </span>
                   </div>
