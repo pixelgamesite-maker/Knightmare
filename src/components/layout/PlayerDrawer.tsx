@@ -135,10 +135,10 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               <DrawerBtn onClick={() => go("/social")}>★ TASKS</DrawerBtn>
               <DrawerBtn onClick={() => go("/gallery")}>👁 GALLERY</DrawerBtn>
               <DrawerBtn onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-               className="text-red-400/70 hover:text-red-400 border-red-900/30 hover:border-red-900/50">
-               ✕ SIGN OUT
-              </DrawerBtn>
-            </div>
+             className="text-red-400/70 hover:text-red-400 border-red-900/30 hover:border-red-900/50">
+           ✕ SIGN OUT
+            </DrawerBtn>
+           </div>
           </motion.div>
         </>
       )}
