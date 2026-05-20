@@ -111,7 +111,6 @@ export default function Hunt() {
           </div>
         </motion.div>
 
-        {/* Slider */}
         <div className="w-full max-w-xs mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">QUANTITY</span>
@@ -168,7 +167,6 @@ export default function Hunt() {
           </div>
         </div>
 
-        {/* Total cost */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -181,7 +179,6 @@ export default function Hunt() {
           </div>
         </motion.div>
 
-        {/* Chest */}
         <motion.div
           animate={opening ? { scale: [1, 1.08, 0.95, 1.05, 1], rotate: [0, -3, 3, -2, 0] } : {}}
           transition={{ repeat: opening ? Infinity : 0, duration: 0.8 }}
@@ -214,7 +211,6 @@ export default function Hunt() {
           <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
         </motion.button>
 
-        {/* Free EMBER claim */}
         <div className="mt-6 text-center">
           <motion.button
             whileHover={{ scale: canClaim ? 1.05 : 1 }}
@@ -247,7 +243,6 @@ export default function Hunt() {
         </div>
       </div>
 
-      {/* Loot Modal */}
       <AnimatePresence>
         {loot && (
           <motion.div
@@ -333,4 +328,4 @@ export default function Hunt() {
       </AnimatePresence>
     </div>
   );
-}
+                }
