@@ -6,11 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { FRAGMENTS, CDN } from "@/lib/fragments";
 import TopBar from "@/components/layout/TopBar";
 
-const EMBER_ICON = `${CDN}/ember.png`;
+const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 type AggregatedLoot = {
   fragments: Record<string, number>;
-  gold: number;
+  ember: number;
   empty: number;
   total: number;
 };
@@ -18,7 +18,7 @@ type AggregatedLoot = {
 export default function Hunt() {
   const { player, invalidate: refreshPlayer } = usePlayer();
   const { invalidate: refreshInv } = useInventory();
-  const [loot, setLoot] = useState<<AggregatedLoot | null>(null);
+  const [loot, setLoot] = useState<AggregatedLoot | null>(null);
   const [opening, setOpening] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [count, setCount] = useState(1);
@@ -38,7 +38,7 @@ export default function Hunt() {
     setOpening(true);
     const aggregated: AggregatedLoot = {
       fragments: {},
-      gold: 0,
+      ember: 0,
       empty: 0,
       total: cappedCount,
     };
@@ -55,7 +55,7 @@ export default function Hunt() {
         const key = data.fragment as string;
         aggregated.fragments[key] = (aggregated.fragments[key] || 0) + 1;
       } else if (data.type === "gold") {
-        aggregated.gold += (data.amount as number) || 0;
+        aggregated.ember += (data.amount as number) || 0;
       } else if (data.type === "empty") {
         aggregated.empty += 1;
       }
@@ -73,21 +73,27 @@ export default function Hunt() {
     const { data } = await supabase.rpc("claim_gold");
     setClaiming(false);
     if (data?.success) refreshPlayer();
-    else alert(data?.error || "Cooldown");
+    else alert(data?.error || "Cooldown active");
   };
 
+  // 30-minute cooldown
   const THIRTY_MIN = 30 * 60 * 1000;
 
-  const canClaim = !player?.last_gold_claim ||
+  const canClaim =
+    !player?.last_gold_claim ||
     new Date(player.last_gold_claim).getTime() + THIRTY_MIN < Date.now();
 
   const msLeft = player?.last_gold_claim
-    ? Math.max(0, new Date(player.last_gold_claim).getTime() + THIRTY_MIN - Date.now())
+    ? Math.max(
+        0,
+        new Date(player.last_gold_claim).getTime() + THIRTY_MIN - Date.now()
+      )
     : 0;
 
   const fmt = (ms: number) => {
-    const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
-    return h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}m ${s}s`;
   };
 
   const ticks = [1, 25, 50, 75, 100];
@@ -95,27 +101,52 @@ export default function Hunt() {
   return (
     <div className="min-h-[100dvh] bg-[#04020c] text-white relative overflow-hidden">
       <TopBar />
-      <div className="absolute inset-0 pointer-events-none z-10 opacity-30"
-        style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(168,85,247,0.03) 2px,rgba(168,85,247,0.03) 4px)" }} />
-      <div className="absolute inset-0 pointer-events-none z-10"
-        style={{ background: "radial-gradient(ellipse 100% 100% at 50% 50%,transparent 40%,rgba(4,2,12,0.9) 100%)" }} />
+      <div
+        className="absolute inset-0 pointer-events-none z-10 opacity-30"
+        style={{
+          background:
+            "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(168,85,247,0.03) 2px,rgba(168,85,247,0.03) 4px)",
+        }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 100% 100% at 50% 50%,transparent 40%,rgba(4,2,12,0.9) 100%)",
+        }}
+      />
 
       <div className="pt-24 pb-10 px-4 flex flex-col items-center justify-center min-h-[100dvh] relative z-20">
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 text-center">
-          <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80] mb-2">CHEST COST</p>
+        {/* Chest cost */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 text-center"
+        >
+          <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80] mb-2">
+            CHEST COST
+          </p>
           <div className="flex items-center justify-center gap-2">
             <img src={EMBER_ICON} alt="ember" className="w-4 h-4 object-contain" />
-            <p className="font-['Press_Start_2P'] text-[14px] text-amber-400" style={{ textShadow: "0 0 15px rgba(251,191,36,0.4)" }}>
+            <p
+              className="font-['Press_Start_2P'] text-[14px] text-amber-400"
+              style={{ textShadow: "0 0 15px rgba(251,191,36,0.4)" }}
+            >
               500 EMBER
             </p>
           </div>
         </motion.div>
 
+        {/* Quantity slider */}
         <div className="w-full max-w-xs mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">QUANTITY</span>
+            <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+              QUANTITY
+            </span>
             <div className="flex items-center gap-3">
-              <span className="font-['VT323'] text-xl text-cyan-400">{cappedCount}</span>
+              <span className="font-['VT323'] text-xl text-cyan-400">
+                {cappedCount}
+              </span>
               <button
                 onClick={setMax}
                 disabled={maxChests < 1}
@@ -131,7 +162,9 @@ export default function Hunt() {
               <motion.div
                 className="h-full bg-gradient-to-r from-[#7c3aed] to-[#22d3ee]"
                 initial={false}
-                animate={{ width: `${maxChests > 0 ? (cappedCount / maxChests) * 100 : 0}%` }}
+                animate={{
+                  width: `${maxChests > 0 ? (cappedCount / maxChests) * 100 : 0}%`,
+                }}
               />
             </div>
             <input
@@ -147,7 +180,9 @@ export default function Hunt() {
               className="absolute top-1/2 -translate-y-1/2 w-5 h-8 bg-[#0a0614] border-2 border-[#22d3ee] rounded shadow-[0_0_10px_rgba(34,211,238,0.5)] z-10 pointer-events-none flex items-center justify-center"
               initial={false}
               animate={{
-                left: `calc(${maxChests > 0 ? (cappedCount / maxChests) * 100 : 0}% - 10px)`,
+                left: `calc(${
+                  maxChests > 0 ? (cappedCount / maxChests) * 100 : 0
+                }% - 10px)`,
               }}
               transition={{ type: "spring", stiffness: 300, damping: 25 }}
             >
@@ -159,7 +194,9 @@ export default function Hunt() {
             {ticks.map((t) => (
               <span
                 key={t}
-                className={`font-['Press_Start_2P'] text-[6px] ${t <= maxChests ? "text-[#4a3a5e]" : "text-[#1a0a2e]"}`}
+                className={`font-['Press_Start_2P'] text-[6px] ${
+                  t <= maxChests ? "text-[#4a3a5e]" : "text-[#1a0a2e]"
+                }`}
               >
                 {t > maxChests ? "" : t}
               </span>
@@ -167,27 +204,43 @@ export default function Hunt() {
           </div>
         </div>
 
+        {/* Total cost */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="mb-6 text-center"
         >
-          <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">TOTAL COST</p>
+          <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+            TOTAL COST
+          </p>
           <div className="flex items-center justify-center gap-1.5">
-            <img src={EMBER_ICON} alt="ember" className="w-3.5 h-3.5 object-contain opacity-80" />
-            <p className="font-['VT323'] text-lg text-amber-400/80">{totalCost.toLocaleString()} EMBER</p>
+            <img
+              src={EMBER_ICON}
+              alt="ember"
+              className="w-3.5 h-3.5 object-contain opacity-80"
+            />
+            <p className="font-['VT323'] text-lg text-amber-400/80">
+              {totalCost.toLocaleString()} EMBER
+            </p>
           </div>
         </motion.div>
 
+        {/* Chest */}
         <motion.div
-          animate={opening ? { scale: [1, 1.08, 0.95, 1.05, 1], rotate: [0, -3, 3, -2, 0] } : {}}
+          animate={
+            opening
+              ? { scale: [1, 1.08, 0.95, 1.05, 1], rotate: [0, -3, 3, -2, 0] }
+              : {}
+          }
           transition={{ repeat: opening ? Infinity : 0, duration: 0.8 }}
           className="relative w-56 h-56 mb-10 cursor-pointer"
           onClick={!opening ? openChests : undefined}
         >
           <div className="absolute inset-0 bg-purple-600/20 blur-3xl rounded-full" />
           <img
-            src={opening ? `${CDN}/chest-open.png` : `${CDN}/chest-close.png`}
+            src={
+              opening ? `${CDN}/chest-open.png` : `${CDN}/chest-close.png`
+            }
             alt="chest"
             className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_30px_rgba(168,85,247,0.5)]"
           />
@@ -204,13 +257,17 @@ export default function Hunt() {
           onClick={openChests}
           disabled={opening || maxChests < 1}
           className="relative font-['Press_Start_2P'] text-[10px] px-10 py-4 bg-[#7c3aed] text-white rounded disabled:opacity-30 disabled:cursor-not-allowed border-2 border-[#a855f7] tracking-wider"
-          style={{ boxShadow: "0 0 20px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.1)" }}
+          style={{
+            boxShadow:
+              "0 0 20px rgba(124,58,237,0.5), inset 0 1px 0 rgba(255,255,255,0.1)",
+          }}
         >
           {opening ? "OPENING..." : `OPEN x${cappedCount}`}
           <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-[#22d3ee]" />
           <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
         </motion.button>
 
+        {/* Claim Ember — 30-min cooldown */}
         <div className="mt-6 text-center">
           <motion.button
             whileHover={{ scale: canClaim ? 1.05 : 1 }}
@@ -223,26 +280,49 @@ export default function Hunt() {
                 : "bg-[#0d0420] border-[#1a0a2e] text-[#2d1a4e] cursor-not-allowed"
             }`}
           >
-            {claiming ? "..." : canClaim ? "CLAIM EMBER" : `CLAIM IN ${fmt(msLeft)}`}
+            {claiming
+              ? "..."
+              : canClaim
+              ? "CLAIM EMBER"
+              : `CLAIM IN ${fmt(msLeft)}`}
           </motion.button>
+          {canClaim && (
+            <p className="font-['VT323'] text-[#4a3a5e] text-sm mt-1">
+              100 – 1000 EMBER
+            </p>
+          )}
         </div>
 
+        {/* Stats */}
         <div className="mt-8 flex gap-6 text-center">
           <div>
-            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">OPENED</p>
-            <p className="text-[10px] text-cyan-400 mt-1">{player?.total_chests_opened || 0}</p>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+              OPENED
+            </p>
+            <p className="text-[10px] text-cyan-400 mt-1">
+              {player?.total_chests_opened || 0}
+            </p>
           </div>
           <div>
-            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">GTD</p>
-            <p className="text-[10px] text-purple-400 mt-1">{player?.forged_gtd ? "YES" : "NO"}</p>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+              GTD
+            </p>
+            <p className="text-[10px] text-purple-400 mt-1">
+              {player?.forged_gtd ? "YES" : "NO"}
+            </p>
           </div>
           <div>
-            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">FCFS</p>
-            <p className="text-[10px] text-purple-400 mt-1">{player?.forged_fcfs ? "YES" : "NO"}</p>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+              FCFS
+            </p>
+            <p className="text-[10px] text-purple-400 mt-1">
+              {player?.forged_fcfs ? "YES" : "NO"}
+            </p>
           </div>
         </div>
       </div>
 
+      {/* Loot Modal */}
       <AnimatePresence>
         {loot && (
           <motion.div
@@ -262,21 +342,39 @@ export default function Hunt() {
               <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#22d3ee]" />
               <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#22d3ee]" />
 
-              <p className="font-['Press_Start_2P'] text-[10px] text-cyan-400 mb-1">CRATES OPENED</p>
-              <p className="font-['VT323'] text-2xl text-white mb-4">{loot.total}</p>
+              <p className="font-['Press_Start_2P'] text-[10px] text-cyan-400 mb-1">
+                CRATES OPENED
+              </p>
+              <p className="font-['VT323'] text-2xl text-white mb-4">
+                {loot.total}
+              </p>
 
               <div className="space-y-3">
-                {loot.gold > 0 && (
+                {loot.ember > 0 && (
                   <motion.div
                     initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
                     className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-center justify-center gap-2"
                   >
-                    <img src={EMBER_ICON} alt="ember" className="w-5 h-5 object-contain" />
-                    <p className="font-['Press_Start_2P'] text-[16px] text-amber-400" style={{ textShadow: "0 0 20px rgba(251,191,36,0.5)" }}>
-                      +{loot.gold.toLocaleString()}
-                    </p>
+                    <img
+                      src={EMBER_ICON}
+                      alt="ember"
+                      className="w-5 h-5 object-contain"
+                    />
+                    <div>
+                      <p
+                        className="font-['Press_Start_2P'] text-[16px] text-amber-400"
+                        style={{
+                          textShadow: "0 0 20px rgba(251,191,36,0.5)",
+                        }}
+                      >
+                        +{loot.ember.toLocaleString()}
+                      </p>
+                      <p className="font-['Press_Start_2P'] text-[8px] text-amber-400/70 mt-1">
+                        TOTAL EMBER
+                      </p>
+                    </div>
                   </motion.div>
                 )}
 
@@ -294,8 +392,12 @@ export default function Hunt() {
                       className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]"
                     />
                     <div className="text-left flex-1">
-                      <p className="font-['VT323'] text-lg text-[#c4b5d4]">{FRAGMENTS[key].name}</p>
-                      <p className="font-['Press_Start_2P'] text-[8px] text-cyan-400">x{qty}</p>
+                      <p className="font-['VT323'] text-lg text-[#c4b5d4]">
+                        {FRAGMENTS[key].name}
+                      </p>
+                      <p className="font-['Press_Start_2P'] text-[8px] text-cyan-400">
+                        x{qty}
+                      </p>
                     </div>
                   </motion.div>
                 ))}
@@ -308,7 +410,8 @@ export default function Hunt() {
                     className="bg-[#0d0420] border border-[#2d1a4e] rounded p-3"
                   >
                     <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80]">
-                      {loot.empty} EMPTY {loot.empty === 1 ? "CRATE" : "CRATES"}
+                      {loot.empty} EMPTY{" "}
+                      {loot.empty === 1 ? "CRATE" : "CRATES"}
                     </p>
                   </motion.div>
                 )}
