@@ -9,6 +9,8 @@ import Landing from "@/pages/landing";
 import Hunt from "@/pages/hunt";
 import Forge from "@/pages/forge";
 import Trades from "@/pages/trades";
+import Gallery from "@/pages/gallery";
+import Social from "@/pages/social";
 import AuthCallback from "@/pages/auth/callback";
 import NotFound from "@/pages/not-found";
 
@@ -29,6 +31,8 @@ function Router() {
           <Route path="/hunt" component={user ? Hunt : () => <Redirect to="/" />} />
           <Route path="/forge" component={user ? Forge : () => <Redirect to="/" />} />
           <Route path="/trades" component={user ? Trades : () => <Redirect to="/" />} />
+          <Route path="/gallery" component={user ? Gallery : () => <Redirect to="/" />} />
+          <Route path="/social" component={user ? Social : () => <Redirect to="/" />} />
           <Route component={NotFound} />
         </Switch>
       </main>
