@@ -6,6 +6,8 @@ import { useInventory } from "@/hooks/useInventory";
 import { supabase } from "@/lib/supabase";
 import { FRAGMENTS, CDN } from "@/lib/fragments";
 
+const EMBER_ICON = `${CDN}/ember.png`;
+
 export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { player, invalidate: refreshPlayer } = usePlayer();
   const { inventory } = useInventory();
@@ -20,7 +22,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
     if (!code.trim()) return;
     const { data } = await supabase.rpc("apply_referral", { p_code: code.trim() });
     if (!data?.success) { setMsg(data?.error || "Failed"); return; }
-    setMsg(`+${data.bonus} gold!`);
+    setMsg(`+${data.bonus} EMBER!`);
     refreshPlayer();
   };
 
@@ -60,8 +62,11 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div className="bg-[#0d0420] rounded border-2 border-[#2d1a4e] p-2 text-center relative">
                   <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
-                  <p className="font-['Press_Start_2P'] text-[9px] text-amber-400">{player?.gold || 0}</p>
-                  <p className="text-[7px] text-[#6b5a80] mt-1 tracking-wider">GOLD</p>
+                  <div className="flex items-center justify-center gap-1">
+                    <img src={EMBER_ICON} alt="" className="w-3 h-3 object-contain" />
+                    <p className="font-['Press_Start_2P'] text-[9px] text-amber-400">{player?.gold || 0}</p>
+                  </div>
+                  <p className="text-[7px] text-[#6b5a80] mt-1 tracking-wider">EMBER</p>
                 </div>
                 <div className="bg-[#0d0420] rounded border-2 border-[#2d1a4e] p-2 text-center relative">
                   <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
@@ -87,7 +92,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               </div>
             </div>
 
-            {/* Referral LINK */}
+            {/* Referral */}
             <div className="p-4 border-b-2 border-[#1a0a2e]">
               <p className="font-['Press_Start_2P'] text-[8px] text-[#a855f7] mb-2 tracking-widest">// REFERRAL //</p>
               
@@ -127,6 +132,8 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               <DrawerBtn onClick={() => go("/hunt")}>⚔ HUNT</DrawerBtn>
               <DrawerBtn onClick={() => go("/forge")}>⚒ FORGE</DrawerBtn>
               <DrawerBtn onClick={() => go("/trades")}>⇄ TRADES</DrawerBtn>
+              <DrawerBtn onClick={() => go("/social")}>★ TASKS</DrawerBtn>
+              <DrawerBtn onClick={() => go("/gallery")}>👁 GALLERY</DrawerBtn>
               <DrawerBtn onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                className="text-red-400/70 hover:text-red-400 border-red-900/30 hover:border-red-900/50">
                ✕ SIGN OUT
