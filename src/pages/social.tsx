@@ -27,7 +27,6 @@ export default function Social() {
   const [msg, setMsg] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
 
-  // Live countdown tick
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
@@ -51,7 +50,6 @@ export default function Social() {
     return tasks.filter((t) => !completedIds.has(t.id));
   }, [tasks, completedIds]);
 
-  // Next drop = 8 hours after the most recent task creation (fallback if no schedule provided)
   const nextDropAt = useMemo(() => {
     if (availableTasks.length > 0) return null;
     if (tasks.length > 0) {
@@ -94,7 +92,6 @@ export default function Social() {
         style={{ background: "repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(168,85,247,0.03) 2px,rgba(168,85,247,0.03) 4px)" }} />
       
       <div className="pt-24 pb-10 px-4 max-w-2xl mx-auto relative z-20">
-        {/* Header */}
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
           <h1 className="font-['Press_Start_2P'] text-[12px] text-[#a855f7] mb-2" style={{ textShadow: "0 0 10px rgba(168,85,247,0.5)" }}>
             ★ SOCIAL TASKS
@@ -104,7 +101,6 @@ export default function Social() {
           </p>
         </motion.div>
 
-        {/* EMBER balance */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -117,7 +113,6 @@ export default function Social() {
           <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">EMBER</span>
         </motion.div>
 
-        {/* Claim flash message */}
         <AnimatePresence>
           {msg && (
             <motion.div 
@@ -136,7 +131,6 @@ export default function Social() {
           )}
         </AnimatePresence>
 
-        {/* Empty state — 8-hour countdown */}
         {availableTasks.length === 0 && !loading && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -179,7 +173,6 @@ export default function Social() {
           </motion.div>
         )}
 
-        {/* Flying Task Cards */}
         <div className="space-y-4">
           <AnimatePresence mode="popLayout">
             {availableTasks.map((task, i) => (
@@ -200,7 +193,6 @@ export default function Social() {
                 <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#22d3ee]" />
                 <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#22d3ee]" />
 
-                {/* 500 EMBER badge */}
                 <div className="absolute -top-3 -right-2 bg-[#7c3aed] border border-[#a855f7] rounded px-2 py-1 flex items-center gap-1 shadow-[0_0_15px_rgba(124,58,237,0.4)]">
                   <img src={EMBER_ICON} alt="ember" className="w-3 h-3 object-contain" />
                   <span className="font-['Press_Start_2P'] text-[7px] text-white">500</span>
@@ -255,4 +247,4 @@ export default function Social() {
       </div>
     </div>
   );
-        }
+}
