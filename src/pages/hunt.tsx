@@ -6,10 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { FRAGMENTS, CDN } from "@/lib/fragments";
 import TopBar from "@/components/layout/TopBar";
 
-type LootItem =
-  | { type: "fragment"; fragment: string }
-  | { type: "gold"; amount: number }
-  | { type: "empty" };
+const EMBER_ICON = `${CDN}/ember.png`;
 
 type AggregatedLoot = {
   fragments: Record<string, number>;
@@ -71,7 +68,7 @@ export default function Hunt() {
     setTimeout(() => setLoot(null), 5000);
   };
 
-  const claimGold = async () => {
+  const claimEmber = async () => {
     setClaiming(true);
     const { data } = await supabase.rpc("claim_gold");
     setClaiming(false);
@@ -106,11 +103,15 @@ export default function Hunt() {
       <div className="pt-24 pb-10 px-4 flex flex-col items-center justify-center min-h-[100dvh] relative z-20">
         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 text-center">
           <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80] mb-2">CHEST COST</p>
-          <p className="font-['Press_Start_2P'] text-[14px] text-amber-400" style={{ textShadow: "0 0 15px rgba(251,191,36,0.4)" }}>
-            500 GOLD
-          </p>
+          <div className="flex items-center justify-center gap-2">
+            <img src={EMBER_ICON} alt="ember" className="w-4 h-4 object-contain" />
+            <p className="font-['Press_Start_2P'] text-[14px] text-amber-400" style={{ textShadow: "0 0 15px rgba(251,191,36,0.4)" }}>
+              500 EMBER
+            </p>
+          </div>
         </motion.div>
 
+        {/* Slider */}
         <div className="w-full max-w-xs mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">QUANTITY</span>
@@ -167,15 +168,20 @@ export default function Hunt() {
           </div>
         </div>
 
+        {/* Total cost */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           className="mb-6 text-center"
         >
           <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">TOTAL COST</p>
-          <p className="font-['VT323'] text-lg text-amber-400/80">{totalCost.toLocaleString()} GOLD</p>
+          <div className="flex items-center justify-center gap-1.5">
+            <img src={EMBER_ICON} alt="ember" className="w-3.5 h-3.5 object-contain opacity-80" />
+            <p className="font-['VT323'] text-lg text-amber-400/80">{totalCost.toLocaleString()} EMBER</p>
+          </div>
         </motion.div>
 
+        {/* Chest */}
         <motion.div
           animate={opening ? { scale: [1, 1.08, 0.95, 1.05, 1], rotate: [0, -3, 3, -2, 0] } : {}}
           transition={{ repeat: opening ? Infinity : 0, duration: 0.8 }}
@@ -208,11 +214,12 @@ export default function Hunt() {
           <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
         </motion.button>
 
+        {/* Free EMBER claim */}
         <div className="mt-6 text-center">
           <motion.button
             whileHover={{ scale: canClaim ? 1.05 : 1 }}
             whileTap={{ scale: canClaim ? 0.95 : 1 }}
-            onClick={claimGold}
+            onClick={claimEmber}
             disabled={!canClaim || claiming}
             className={`font-['Press_Start_2P'] text-[8px] px-6 py-2 rounded border-2 tracking-wider transition-all ${
               canClaim
@@ -220,7 +227,7 @@ export default function Hunt() {
                 : "bg-[#0d0420] border-[#1a0a2e] text-[#2d1a4e] cursor-not-allowed"
             }`}
           >
-            {claiming ? "..." : canClaim ? "CLAIM GOLD" : `CLAIM IN ${fmt(msLeft)}`}
+            {claiming ? "..." : canClaim ? "CLAIM EMBER" : `CLAIM IN ${fmt(msLeft)}`}
           </motion.button>
         </div>
 
@@ -240,6 +247,7 @@ export default function Hunt() {
         </div>
       </div>
 
+      {/* Loot Modal */}
       <AnimatePresence>
         {loot && (
           <motion.div
@@ -268,12 +276,12 @@ export default function Hunt() {
                     initial={{ y: 10, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-amber-500/10 border border-amber-500/30 rounded p-3"
+                    className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-center justify-center gap-2"
                   >
+                    <img src={EMBER_ICON} alt="ember" className="w-5 h-5 object-contain" />
                     <p className="font-['Press_Start_2P'] text-[16px] text-amber-400" style={{ textShadow: "0 0 20px rgba(251,191,36,0.5)" }}>
                       +{loot.gold.toLocaleString()}
                     </p>
-                    <p className="font-['Press_Start_2P'] text-[8px] text-amber-400/70 mt-1">TOTAL GOLD</p>
                   </motion.div>
                 )}
 
@@ -325,4 +333,4 @@ export default function Hunt() {
       </AnimatePresence>
     </div>
   );
-            }
+}
