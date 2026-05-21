@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlayer } from "@/hooks/usePlayer";
 import { useInventory } from "@/hooks/useInventory";
@@ -22,19 +22,53 @@ export default function Hunt() {
   const [opening, setOpening] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [count, setCount] = useState(1);
+  const [msLeft, setMsLeft] = useState(0);
+
+  // ── Use player.ember (renamed from gold) ──────────────────────────────────
+  const emberBalance = (player as any)?.ember ?? 0;
 
   const maxChests = useMemo(() => {
-    return Math.floor((player?.gold || 0) / 500);
-  }, [player?.gold]);
+    return Math.floor(emberBalance / 500);
+  }, [emberBalance]);
 
   const cappedCount = Math.min(count, maxChests);
   const totalCost = cappedCount * 500;
-
   const setMax = () => setCount(maxChests);
 
+  // ── 30-min cooldown using last_ember_claim ─────────────────────────────────
+  const THIRTY_MIN = 30 * 60 * 1000;
+
+  const lastClaim = (player as any)?.last_ember_claim;
+
+  const canClaim =
+    !lastClaim ||
+    new Date(lastClaim).getTime() + THIRTY_MIN < Date.now();
+
+  // Live countdown ticker
+  useEffect(() => {
+    if (canClaim) { setMsLeft(0); return; }
+    const tick = () => {
+      const left = Math.max(
+        0,
+        new Date(lastClaim).getTime() + THIRTY_MIN - Date.now()
+      );
+      setMsLeft(left);
+      if (left === 0) refreshPlayer();
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastClaim, canClaim]);
+
+  const fmt = (ms: number) => {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${m}m ${s}s`;
+  };
+
+  // ── Open chests ────────────────────────────────────────────────────────────
   const openChests = async () => {
     if (maxChests < 1 || cappedCount < 1) return;
-
     setOpening(true);
     const aggregated: AggregatedLoot = {
       fragments: {},
@@ -46,7 +80,6 @@ export default function Hunt() {
     const promises = Array.from({ length: cappedCount }, () =>
       supabase.rpc("open_chest")
     );
-
     const results = await Promise.all(promises);
 
     results.forEach(({ data }) => {
@@ -68,32 +101,14 @@ export default function Hunt() {
     setTimeout(() => setLoot(null), 5000);
   };
 
+  // ── Claim ember ────────────────────────────────────────────────────────────
   const claimEmber = async () => {
+    if (!canClaim) return;
     setClaiming(true);
-    const { data } = await supabase.rpc("claim_gold");
+    const { data } = await supabase.rpc("claim_gold"); // RPC name unchanged in DB
     setClaiming(false);
     if (data?.success) refreshPlayer();
     else alert(data?.error || "Cooldown active");
-  };
-
-  // 30-minute cooldown
-  const THIRTY_MIN = 30 * 60 * 1000;
-
-  const canClaim =
-    !player?.last_gold_claim ||
-    new Date(player.last_gold_claim).getTime() + THIRTY_MIN < Date.now();
-
-  const msLeft = player?.last_gold_claim
-    ? Math.max(
-        0,
-        new Date(player.last_gold_claim).getTime() + THIRTY_MIN - Date.now()
-      )
-    : 0;
-
-  const fmt = (ms: number) => {
-    const m = Math.floor(ms / 60000);
-    const s = Math.floor((ms % 60000) / 1000);
-    return `${m}m ${s}s`;
   };
 
   const ticks = [1, 25, 50, 75, 100];
@@ -117,6 +132,22 @@ export default function Hunt() {
       />
 
       <div className="pt-24 pb-10 px-4 flex flex-col items-center justify-center min-h-[100dvh] relative z-20">
+
+        {/* Ember balance */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 flex items-center gap-2 bg-[#0d0420] border border-[#2d1a4e] rounded-full px-4 py-2"
+        >
+          <img src={EMBER_ICON} alt="ember" className="w-4 h-4 object-contain" />
+          <span
+            className="font-['Press_Start_2P'] text-[11px] text-amber-400"
+            style={{ textShadow: "0 0 10px rgba(251,191,36,0.4)" }}
+          >
+            {emberBalance.toLocaleString()} EMBER
+          </span>
+        </motion.div>
+
         {/* Chest cost */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -238,9 +269,7 @@ export default function Hunt() {
         >
           <div className="absolute inset-0 bg-purple-600/20 blur-3xl rounded-full" />
           <img
-            src={
-              opening ? `${CDN}/chest-open.png` : `${CDN}/chest-close.png`
-            }
+            src={opening ? `${CDN}/chest-open.png` : `${CDN}/chest-close.png`}
             alt="chest"
             className="w-full h-full object-contain relative z-10 drop-shadow-[0_0_30px_rgba(168,85,247,0.5)]"
           />
@@ -267,7 +296,7 @@ export default function Hunt() {
           <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
         </motion.button>
 
-        {/* Claim Ember — 30-min cooldown */}
+        {/* Claim Ember */}
         <div className="mt-6 text-center">
           <motion.button
             whileHover={{ scale: canClaim ? 1.05 : 1 }}
@@ -296,25 +325,19 @@ export default function Hunt() {
         {/* Stats */}
         <div className="mt-8 flex gap-6 text-center">
           <div>
-            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
-              OPENED
-            </p>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">OPENED</p>
             <p className="text-[10px] text-cyan-400 mt-1">
               {player?.total_chests_opened || 0}
             </p>
           </div>
           <div>
-            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
-              GTD
-            </p>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">GTD</p>
             <p className="text-[10px] text-purple-400 mt-1">
               {player?.forged_gtd ? "YES" : "NO"}
             </p>
           </div>
           <div>
-            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
-              FCFS
-            </p>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">FCFS</p>
             <p className="text-[10px] text-purple-400 mt-1">
               {player?.forged_fcfs ? "YES" : "NO"}
             </p>
@@ -345,9 +368,7 @@ export default function Hunt() {
               <p className="font-['Press_Start_2P'] text-[10px] text-cyan-400 mb-1">
                 CRATES OPENED
               </p>
-              <p className="font-['VT323'] text-2xl text-white mb-4">
-                {loot.total}
-              </p>
+              <p className="font-['VT323'] text-2xl text-white mb-4">{loot.total}</p>
 
               <div className="space-y-3">
                 {loot.ember > 0 && (
@@ -357,17 +378,11 @@ export default function Hunt() {
                     transition={{ delay: 0.1 }}
                     className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-center justify-center gap-2"
                   >
-                    <img
-                      src={EMBER_ICON}
-                      alt="ember"
-                      className="w-5 h-5 object-contain"
-                    />
+                    <img src={EMBER_ICON} alt="ember" className="w-5 h-5 object-contain" />
                     <div>
                       <p
                         className="font-['Press_Start_2P'] text-[16px] text-amber-400"
-                        style={{
-                          textShadow: "0 0 20px rgba(251,191,36,0.5)",
-                        }}
+                        style={{ textShadow: "0 0 20px rgba(251,191,36,0.5)" }}
                       >
                         +{loot.ember.toLocaleString()}
                       </p>
@@ -410,8 +425,7 @@ export default function Hunt() {
                     className="bg-[#0d0420] border border-[#2d1a4e] rounded p-3"
                   >
                     <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80]">
-                      {loot.empty} EMPTY{" "}
-                      {loot.empty === 1 ? "CRATE" : "CRATES"}
+                      {loot.empty} EMPTY {loot.empty === 1 ? "CRATE" : "CRATES"}
                     </p>
                   </motion.div>
                 )}
