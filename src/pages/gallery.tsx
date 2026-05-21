@@ -34,7 +34,7 @@ export default function Gallery() {
   );
   const [isShuffling, setIsShuffling] = useState(false);
   const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
-  const intervalRef = useRef<ReturnType<<typeof setInterval> | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Load persisted cooldown + won knight on mount ──
   useEffect(() => {
