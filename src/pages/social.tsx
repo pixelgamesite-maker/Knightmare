@@ -72,7 +72,7 @@ export default function SocialTasks() {
   const [loading, setLoading] = useState<string | null>(null);
   const [flashTask, setFlashTask] = useState<string | null>(null);
 
-  const intervalRefs = useRef<<Record<string, ReturnType<typeof setInterval>>>({});
+  const intervalRefs = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
   // ── Load state from localStorage on mount ──────────────────────────────────
   useEffect(() => {
