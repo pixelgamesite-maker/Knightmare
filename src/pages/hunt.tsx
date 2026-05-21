@@ -25,7 +25,6 @@ export default function Hunt() {
   const [msLeft, setMsLeft] = useState(0);
 
   // ── Use player.ember (renamed from gold) ──────────────────────────────────
-  const emberBalance = (player as any)?.ember ?? 0;
 
   const maxChests = useMemo(() => {
     return Math.floor(emberBalance / 500);
