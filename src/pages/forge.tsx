@@ -47,7 +47,7 @@ export default function Forge() {
   const [downloading, setDownloading] = useState(false);
 
   const unique = Object.entries(inventory).filter(([_, q]) => (q as number) > 0).length;
-  const hasAll6 = unique >= 6;
+  const hasAll6 = unique >= 7;
   const alreadyForged = !!player?.forged_gtd;
 
   // ── On mount: restore persisted knight + wallet state ─────────────────────
@@ -158,7 +158,7 @@ export default function Forge() {
             ⚒ THE FORGE
           </h1>
           <p className="font-['VT323'] text-xl text-[#6b5a80]">
-            Collect all 6 fragments to forge your artifact.
+            Collect all 7 fragments to forge your artifact.
           </p>
         </motion.div>
 
