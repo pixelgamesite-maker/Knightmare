@@ -17,7 +17,7 @@ Complete your set and earn your place among the Knightmares.
 const TASK_1_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(TASK_1_TWEET)}`;
 
 const ENGAGEMENT_TWEET_URLS = [
-  "https://x.com/knightmareseth/status/2056754762163376307?s=46",
+  "https://x.com/KnightmaresETH/status/2057538104030814295",
   "https://x.com/knightmareseth/status/2056407954455212476?s=46",
 ];
 
