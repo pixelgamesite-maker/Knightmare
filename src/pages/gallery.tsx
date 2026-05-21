@@ -29,7 +29,7 @@ function formatTime(ms: number) {
 export default function Gallery() {
   const { player } = usePlayer();
   const [displayKnight, setDisplayKnight] = useState(getRandomKnight);
-  const [wonKnight, setWonKnight] = useState<<typeof ALL_KNIGHTS[0] | null>(
+  const [wonKnight, setWonKnight] = useState<(typeof ALL_KNIGHTS)[0] | null>(
     null
   );
   const [isShuffling, setIsShuffling] = useState(false);
@@ -118,7 +118,6 @@ export default function Gallery() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch {
-      // Fallback: open raw image if CORS blocks download
       window.open(wonKnight.url, "_blank");
     }
   };
@@ -161,7 +160,7 @@ export default function Gallery() {
             className="font-['Press_Start_2P'] text-[14px] text-[#a855f7] mb-3"
             style={{ textShadow: "0 0 15px rgba(168,85,247,0.5)" }}
           >
-            ⚔️ KNIGHT SHUFFLE
+            KNIGHT SHUFFLE
           </h1>
           <p className="font-['VT323'] text-xl text-[#6b5a80]">
             {TOTAL.toLocaleString()} knights await in the dark
@@ -250,7 +249,7 @@ export default function Gallery() {
                 className="font-['Press_Start_2P'] text-[9px] px-10 py-3.5 bg-amber-500/20 border-2 border-amber-500/50 text-amber-400 rounded hover:bg-amber-500/30 transition-all tracking-wider"
                 style={{ boxShadow: "0 0 20px rgba(245,158,11,0.3)" }}
               >
-                ⬇ DOWNLOAD KNIGHT #{wonKnight.id}
+                DOWNLOAD KNIGHT #{wonKnight.id}
               </motion.button>
 
               <motion.button
@@ -261,7 +260,7 @@ export default function Gallery() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   const text = encodeURIComponent(
-                    `Just summoned Knight #${wonKnight.id} from @ArcaneKnights ⚔️\n\nThe forge has spoken. 🔥\n\n#ArcaneKnights #NFT`
+                    `Just summoned Knight #${wonKnight.id} from @ArcaneKnights\n\nThe forge has spoken.\n\n#ArcaneKnights #NFT`
                   );
                   window.open(
                     `https://twitter.com/intent/tweet?text=${text}`,
@@ -270,7 +269,7 @@ export default function Gallery() {
                 }}
                 className="font-['Press_Start_2P'] text-[7px] px-5 py-2 bg-[#0d0420] border border-[#4a3a5e] text-[#a855f7] rounded hover:border-[#7c3aed] transition-colors"
               >
-                POST 𝕏
+                POST X
               </motion.button>
             </motion.div>
           )}
