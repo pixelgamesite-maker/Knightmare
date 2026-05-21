@@ -16,6 +16,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
   const [msg, setMsg] = useState<string | null>(null);
 
   const fragCount = Object.values(inventory).reduce((a, b) => a + (b || 0), 0);
+  const emberBalance = (player as any)?.ember ?? 0;
 
   const applyRef = async () => {
     setMsg(null);
@@ -64,7 +65,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
                   <div className="absolute -top-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
                   <div className="flex items-center justify-center gap-1">
                     <img src={EMBER_ICON} alt="" className="w-3 h-3 object-contain" />
-                    <p className="font-['Press_Start_2P'] text-[9px] text-amber-400">{player?.gold || 0}</p>
+                    <p className="font-['Press_Start_2P'] text-[9px] text-amber-400">{emberBalance}</p>
                   </div>
                   <p className="text-[7px] text-[#6b5a80] mt-1 tracking-wider">EMBER</p>
                 </div>
@@ -126,7 +127,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
               )}
               {msg && <p className={`text-[8px] mt-2 font-['Press_Start_2P'] ${msg.includes("copied") || msg.includes("+") ? "text-amber-400" : "text-red-400"}`}>{msg}</p>}
             </div>
-
+            
             {/* Nav */}
             <div className="p-4 space-y-2">
               <DrawerBtn onClick={() => go("/hunt")}>⚔ HUNT</DrawerBtn>
