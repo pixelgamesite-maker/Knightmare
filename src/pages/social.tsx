@@ -65,14 +65,14 @@ export default function SocialTasks() {
   const [task1Timer, setTask1Timer] = useState(0);
   const [engagementUnlocked, setEngagementUnlocked] = useState(false);
   const [unlockTimer, setUnlockTimer] = useState(0);
-  const [completedEngagement, setCompletedEngagement] = useState<<Set<string>>(new Set());
-  const [engagementTimers, setEngagementTimers] = useState<<Record<string, number>>({});
+  const [completedEngagement, setCompletedEngagement] = useState<Set<string>>(new Set());
+  const [engagementTimers, setEngagementTimers] = useState<Record<string, number>>({});
   const [showCommentModal, setShowCommentModal] = useState<string | null>(null);
   const [commentLink, setCommentLink] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
   const [flashTask, setFlashTask] = useState<string | null>(null);
 
-  const intervalRefs = useRef<<Record<string, ReturnType<<typeof setInterval>>>({});
+  const intervalRefs = useRef<<Record<string, ReturnType<typeof setInterval>>>({});
 
   // ── Load state from localStorage on mount ──────────────────────────────────
   useEffect(() => {
