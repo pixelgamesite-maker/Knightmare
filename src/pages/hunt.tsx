@@ -133,21 +133,6 @@ export default function Hunt() {
 
       <div className="pt-24 pb-10 px-4 flex flex-col items-center justify-center min-h-[100dvh] relative z-20">
 
-        {/* Ember balance */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 flex items-center gap-2 bg-[#0d0420] border border-[#2d1a4e] rounded-full px-4 py-2"
-        >
-          <img src={EMBER_ICON} alt="ember" className="w-4 h-4 object-contain" />
-          <span
-            className="font-['Press_Start_2P'] text-[11px] text-amber-400"
-            style={{ textShadow: "0 0 10px rgba(251,191,36,0.4)" }}
-          >
-            {emberBalance.toLocaleString()} EMBER
-          </span>
-        </motion.div>
-
         {/* Chest cost */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
