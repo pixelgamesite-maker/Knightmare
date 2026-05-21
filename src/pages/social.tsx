@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { usePlayer } from "@/hooks/usePlayer";
@@ -6,166 +6,230 @@ import TopBar from "@/components/layout/TopBar";
 
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
-// ─── Task definitions ────────────────────────────────────────────────────────
-// Each task has an id, label, a tweet template, and whether it needs user input.
-const TASK_TEMPLATES = [
-  {
-    id: "hype",
-    label: "POST HYPE TWEET",
-    icon: "⚔️",
-    template:
-      "The forge is alive. Knights are being summoned. @ArcaneKnights — the hunt begins. 🔥\n\n#ArcaneKnights #NFT",
-  },
-  {
-    id: "flex",
-    label: "FLEX YOUR LOOT",
-    icon: "🏆",
-    template:
-      "Just cracked open a chest in @ArcaneKnights and the loot was INSANE 👀\n\nJoin the hunt 👇\n#ArcaneKnights",
-  },
-  {
-    id: "recruit",
-    label: "RECRUIT A KNIGHT",
-    icon: "🛡️",
-    template:
-      "My squad is forging knights. You in? @ArcaneKnights — collect artifacts, build your knight, win a sneak.\n\n#ArcaneKnights #Web3",
-  },
+// ─── Task Configuration ─────────────────────────────────────────────────────
+
+const TASK_1_TWEET = `Fragments have begun surfacing from the forge. ⚔️🔥
+Helms. Swords. Relics long thought lost.
+Complete your set and earn your place among the Knightmares.
+@KnightmaresETH
+#Knightmares`;
+
+const TASK_1_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(TASK_1_TWEET)}`;
+
+const ENGAGEMENT_TWEET_URLS = [
+  "https://x.com/knightmareseth/status/2056754762163376307?s=46",
+  "https://x.com/knightmareseth/status/2056407954455212476?s=46",
 ];
 
-// 8-hour cycle in ms
-const CYCLE_MS = 8 * 60 * 60 * 1000;
+const EIGHT_HOURS = 8 * 60 * 60 * 1000;
+const THIRTY_SECONDS = 30 * 1000;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type TaskStatus = "locked" | "available" | "timer" | "completed";
+
+interface EngagementTask {
+  id: string;
+  label: string;
+  ember: number;
+  action: "like" | "retweet" | "comment";
+  url: string;
+}
+
+const ENGAGEMENT_TASKS: EngagementTask[] = [
+  { id: "like_1", label: "LIKE", ember: 150, action: "like", url: ENGAGEMENT_TWEET_URLS[0] },
+  { id: "retweet_1", label: "RETWEET", ember: 150, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
+  { id: "comment_1", label: "COMMENT", ember: 200, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function getNextCycleStart(): number {
-  // Align to 8-hour UTC windows: 00:00, 08:00, 16:00
-  const now = Date.now();
-  const slot = Math.floor(now / CYCLE_MS);
-  return (slot + 1) * CYCLE_MS;
-}
 
-function getCurrentCycleStart(): number {
-  const now = Date.now();
-  const slot = Math.floor(now / CYCLE_MS);
-  return slot * CYCLE_MS;
-}
-
-function fmt(ms: number) {
+function formatTime(ms: number): string {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);
   const s = Math.floor((ms % 60000) / 1000);
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(
-    s
-  ).padStart(2, "0")}`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-// ─── Flying tweet animation ───────────────────────────────────────────────────
-function FlyingTweet({ text, onDone }: { text: string; onDone: () => void }) {
-  return (
-    <motion.div
-      className="fixed bottom-16 left-1/2 z-[100] pointer-events-none"
-      initial={{ x: "-50%", y: 0, opacity: 1, scale: 1 }}
-      animate={{ x: "60vw", y: "-80vh", opacity: 0, scale: 0.4, rotate: 15 }}
-      transition={{ duration: 1.2, ease: "easeIn" }}
-      onAnimationComplete={onDone}
-    >
-      <div className="bg-[#0d0420] border-2 border-[#7c3aed] rounded-xl px-4 py-3 max-w-[240px] shadow-[0_0_30px_rgba(124,58,237,0.6)]">
-        <div className="flex items-center gap-2 mb-2">
-          <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#a855f7]">
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-          <span className="font-['Press_Start_2P'] text-[7px] text-[#a855f7]">
-            POSTED
-          </span>
-        </div>
-        <p className="font-['VT323'] text-[13px] text-[#c4b5d4] leading-tight line-clamp-3">
-          {text}
-        </p>
-      </div>
-    </motion.div>
-  );
+function formatShortTime(ms: number): string {
+  const m = Math.floor(ms / 60000);
+  const s = Math.floor((ms % 60000) / 1000);
+  return `${m}m ${s}s`;
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function SocialTasks() {
   const { player, invalidate: refreshPlayer } = usePlayer();
-
-  // Countdown to next cycle
-  const [msLeft, setMsLeft] = useState(() => getNextCycleStart() - Date.now());
-  // Which cycle is currently active (changes every 8h)
-  const [cycleKey, setCycleKey] = useState(() => getCurrentCycleStart());
-  // Completed task ids for the current cycle (stored locally + optionally in DB)
-  const [completed, setCompleted] = useState<Set<string>>(new Set());
-  // Flying tweet state
-  const [flyingTweet, setFlyingTweet] = useState<string | null>(null);
-  // Task being previewed
-  const [preview, setPreview] = useState<string | null>(null);
-  // Loading state per task
+  const [task1Status, setTask1Status] = useState<TaskStatus>("available");
+  const [task1Timer, setTask1Timer] = useState(0);
+  const [engagementUnlocked, setEngagementUnlocked] = useState(false);
+  const [unlockTimer, setUnlockTimer] = useState(0);
+  const [completedEngagement, setCompletedEngagement] = useState<<Set<string>>(new Set());
+  const [engagementTimers, setEngagementTimers] = useState<<Record<string, number>>({});
+  const [showCommentModal, setShowCommentModal] = useState<string | null>(null);
+  const [commentLink, setCommentLink] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
-  // Success flash
-  const [flash, setFlash] = useState<string | null>(null);
+  const [flashTask, setFlashTask] = useState<string | null>(null);
 
-  // ── Tick every second ──────────────────────────────────────────────────────
+  const intervalRefs = useRef<<Record<string, ReturnType<<typeof setInterval>>>({});
+
+  // ── Load state from localStorage on mount ──────────────────────────────────
   useEffect(() => {
-    const id = setInterval(() => {
-      const now = Date.now();
-      const newCycle = getCurrentCycleStart();
-      if (newCycle !== cycleKey) {
-        // New cycle started — reset completions
-        setCycleKey(newCycle);
-        setCompleted(new Set());
+    const savedTask1 = localStorage.getItem("km_task1");
+    const savedUnlock = localStorage.getItem("km_unlock_time");
+    const savedEngagement = localStorage.getItem("km_engagement");
+    const savedTimers = localStorage.getItem("km_engagement_timers");
+
+    if (savedTask1 === "completed") {
+      setTask1Status("completed");
+      if (savedUnlock) {
+        const unlockTime = parseInt(savedUnlock, 10);
+        if (Date.now() >= unlockTime) {
+          setEngagementUnlocked(true);
+        } else {
+          setUnlockTimer(unlockTime - Date.now());
+        }
       }
-      setMsLeft(getNextCycleStart() - now);
+    }
+
+    if (savedEngagement) {
+      setCompletedEngagement(new Set(JSON.parse(savedEngagement)));
+    }
+    if (savedTimers) {
+      setEngagementTimers(JSON.parse(savedTimers));
+    }
+  }, []);
+
+  // ── Global countdown ticker ──────────────────────────────────────────────
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setUnlockTimer((prev) => {
+        if (prev <= 1000) {
+          if (prev > 0) setEngagementUnlocked(true);
+          return 0;
+        }
+        return prev - 1000;
+      });
+
+      setTask1Timer((prev) => (prev > 1000 ? prev - 1000 : 0));
+
+      setEngagementTimers((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((k) => {
+          if (next[k] > 1000) next[k] -= 1000;
+          else delete next[k];
+        });
+        return next;
+      });
     }, 1000);
-    return () => clearInterval(id);
-  }, [cycleKey]);
+    return () => clearInterval(tick);
+  }, []);
 
-  // ── Load completed tasks for current cycle from DB ─────────────────────────
-  useEffect(() => {
-    if (!player?.id) return;
-    supabase
-      .from("social_tasks")
-      .select("task_id")
-      .eq("user_id", player.id)
-      .gte("completed_at", new Date(cycleKey).toISOString())
-      .then(({ data }) => {
-        if (data) setCompleted(new Set(data.map((r) => r.task_id)));
-      });
-  }, [player?.id, cycleKey]);
+  // ── Task 1: Post Tweet ─────────────────────────────────────────────────────
+  const handleTask1 = useCallback(() => {
+    if (task1Status !== "available") return;
 
-  // ── Submit a task ──────────────────────────────────────────────────────────
-  const submitTask = useCallback(
-    async (taskId: string, tweetText: string) => {
-      if (!player?.id || completed.has(taskId)) return;
-      setLoading(taskId);
-      setPreview(null);
+    window.open(TASK_1_URL, "_blank");
+    setTask1Status("timer");
+    setTask1Timer(THIRTY_SECONDS);
 
-      // Open Twitter intent
-      const encoded = encodeURIComponent(tweetText);
-      window.open(`https://twitter.com/intent/tweet?text=${encoded}`, "_blank");
-
-      // Record in DB + award 500 ember
-      const { data } = await supabase.rpc("complete_social_task", {
-        p_task_id: taskId,
-        p_cycle_start: new Date(cycleKey).toISOString(),
+    // Auto-complete after 30s
+    setTimeout(() => {
+      setTask1Status("completed");
+      localStorage.setItem("km_task1", "completed");
+      
+      // Award 500 EMBER
+      supabase.rpc("complete_social_task", {
+        p_task_id: "post_bullish_tweet",
+        p_cycle_start: new Date().toISOString(),
+      }).then(({ data }) => {
+        if (data?.success) refreshPlayer();
       });
 
+      // Set 8h unlock timer for engagement tasks
+      const unlockTime = Date.now() + EIGHT_HOURS;
+      localStorage.setItem("km_unlock_time", String(unlockTime));
+      setUnlockTimer(EIGHT_HOURS);
+      setFlashTask("task1");
+      setTimeout(() => setFlashTask(null), 2000);
+    }, THIRTY_SECONDS);
+  }, [task1Status, refreshPlayer]);
+
+  // ── Engagement Task Handler ────────────────────────────────────────────────
+  const handleEngagement = useCallback((task: EngagementTask) => {
+    if (!engagementUnlocked || completedEngagement.has(task.id)) return;
+
+    // For comment task, show modal instead of timer
+    if (task.action === "comment") {
+      setShowCommentModal(task.id);
+      return;
+    }
+
+    // Open the tweet
+    window.open(task.url, "_blank");
+
+    // Start 30s timer
+    setEngagementTimers((prev) => ({ ...prev, [task.id]: THIRTY_SECONDS }));
+
+    setTimeout(() => {
+      setCompletedEngagement((prev) => {
+        const next = new Set([...prev, task.id]);
+        localStorage.setItem("km_engagement", JSON.stringify([...next]));
+        return next;
+      });
+
+      // Award EMBER
+      supabase.rpc("complete_social_task", {
+        p_task_id: task.id,
+        p_cycle_start: new Date().toISOString(),
+      }).then(({ data }) => {
+        if (data?.success) refreshPlayer();
+      });
+
+      setFlashTask(task.id);
+      setTimeout(() => setFlashTask(null), 2000);
+    }, THIRTY_SECONDS);
+  }, [engagementUnlocked, completedEngagement, refreshPlayer]);
+
+  // ── Submit Comment Link ────────────────────────────────────────────────────
+  const submitComment = useCallback(() => {
+    if (!commentLink.trim() || !showCommentModal) return;
+
+    setLoading(showCommentModal);
+
+    // Store for approval (in real app, send to admin queue)
+    supabase.from("pending_comments").insert({
+      user_id: player?.id,
+      task_id: showCommentModal,
+      comment_url: commentLink,
+      submitted_at: new Date().toISOString(),
+    }).then(() => {
       setLoading(null);
+      setShowCommentModal(null);
+      setCommentLink("");
 
-      if (data?.success) {
-        setCompleted((prev) => new Set([...prev, taskId]));
-        setFlyingTweet(tweetText);
-        setFlash(taskId);
-        setTimeout(() => setFlash(null), 2000);
-        refreshPlayer();
-      } else {
-        alert(data?.error || "Could not record task. Try again.");
-      }
-    },
-    [player?.id, completed, cycleKey, refreshPlayer]
-  );
+      // Mark as pending (not completed until approved)
+      setCompletedEngagement((prev) => {
+        const next = new Set([...prev, showCommentModal]);
+        localStorage.setItem("km_engagement", JSON.stringify([...next]));
+        return next;
+      });
 
-  const isActive = true; // tasks are always available; timer shows next refresh
-  const allDone = TASK_TEMPLATES.every((t) => completed.has(t.id));
+      // Award immediately for UX (admin can revoke if fake)
+      supabase.rpc("complete_social_task", {
+        p_task_id: showCommentModal,
+        p_cycle_start: new Date().toISOString(),
+      }).then(({ data }) => {
+        if (data?.success) refreshPlayer();
+      });
+
+      setFlashTask(showCommentModal);
+      setTimeout(() => setFlashTask(null), 2000);
+    });
+  }, [commentLink, showCommentModal, player?.id, refreshPlayer]);
+
+  const emberBalance = (player as any)?.ember ?? 0;
 
   return (
     <div className="min-h-[100dvh] bg-[#04020c] text-white relative overflow-hidden">
@@ -191,204 +255,325 @@ export default function SocialTasks() {
             className="font-['Press_Start_2P'] text-[12px] text-[#a855f7] mb-2"
             style={{ textShadow: "0 0 12px rgba(168,85,247,0.6)" }}
           >
-            📣 SOCIAL TASKS
+            SOCIALS
           </h1>
           <p className="font-['VT323'] text-lg text-[#6b5a80]">
-            Spread the word. Earn EMBER.
+            Complete tasks. Earn EMBER.
           </p>
         </motion.div>
 
-        {/* 8-hour countdown */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="mb-8 bg-[#0a0614] border border-[#1a0a2e] rounded-lg p-4 text-center"
-        >
-          <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-2">
-            NEXT REFRESH IN
+        {/* ── TASK 1: POST BULLISH TWEET ───────────────────────────────────── */}
+        <div className="mb-3">
+          <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
+            TWEET TASK
           </p>
-          <p
-            className="font-['Press_Start_2P'] text-[20px] text-cyan-400 tracking-widest"
-            style={{ textShadow: "0 0 10px rgba(34,211,238,0.4)" }}
-          >
-            {fmt(msLeft)}
-          </p>
-          <p className="font-['VT323'] text-[#4a3a5e] text-sm mt-1">
-            Tasks reset every 8 hours
-          </p>
-        </motion.div>
-
-        {/* Reward badge */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent to-[#2d1a4e]" />
-          <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full px-3 py-1">
-            <img src={EMBER_ICON} alt="ember" className="w-3.5 h-3.5 object-contain" />
-            <span className="font-['Press_Start_2P'] text-[8px] text-amber-400">
-              500 EMBER / TASK
-            </span>
-          </div>
-          <div className="h-px flex-1 bg-gradient-to-l from-transparent to-[#2d1a4e]" />
         </div>
 
-        {/* Tasks */}
-        <div className="space-y-4">
-          {TASK_TEMPLATES.map((task, i) => {
-            const done = completed.has(task.id);
-            const isLoading = loading === task.id;
-            const isFlashing = flash === task.id;
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`relative rounded-xl border-2 overflow-hidden transition-all duration-300 ${
+            task1Status === "completed"
+              ? "border-emerald-700/40 bg-[#061a0f]"
+              : flashTask === "task1"
+              ? "border-amber-400 bg-[#1a0a2e]"
+              : "border-[#2d1a4e] bg-[#0a0614]"
+          }`}
+        >
+          <div className="p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#a855f7] shrink-0">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                  <span
+                    className={`font-['Press_Start_2P'] text-[9px] ${
+                      task1Status === "completed" ? "text-emerald-400" : "text-[#c4b5d4]"
+                    }`}
+                  >
+                    {task1Status === "completed" ? "COMPLETED" : "POST BULLISH TWEET"}
+                  </span>
+                </div>
+                <p className="font-['VT323'] text-[15px] text-[#6b5a80] leading-snug line-clamp-3">
+                  {TASK_1_TWEET}
+                </p>
+              </div>
 
-            return (
-              <motion.div
-                key={task.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className={`relative rounded-lg border-2 overflow-hidden transition-all duration-300 ${
-                  done
-                    ? "border-emerald-700/40 bg-[#061a0f]"
-                    : isFlashing
-                    ? "border-amber-400 bg-[#1a0a2e]"
-                    : "border-[#2d1a4e] bg-[#0a0614] hover:border-[#7c3aed]"
-                }`}
-              >
-                {/* Glow when flashing */}
-                {isFlashing && (
-                  <div className="absolute inset-0 bg-amber-400/5 pointer-events-none" />
+              {/* Right side: Timer or Button */}
+              <div className="shrink-0 flex flex-col items-end gap-2">
+                {task1Status === "available" && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleTask1}
+                    className="font-['Press_Start_2P'] text-[8px] px-4 py-2 bg-[#7c3aed] border border-[#a855f7] text-white rounded-lg hover:bg-[#6d28d9] transition-colors"
+                    style={{ boxShadow: "0 0 15px rgba(124,58,237,0.4)" }}
+                  >
+                    GO +500
+                  </motion.button>
                 )}
 
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-lg">{task.icon}</span>
-                        <span
-                          className={`font-['Press_Start_2P'] text-[9px] ${
-                            done ? "text-emerald-400" : "text-[#c4b5d4]"
-                          }`}
-                        >
-                          {done ? "✓ COMPLETED" : task.label}
-                        </span>
-                      </div>
-                      <p className="font-['VT323'] text-[14px] text-[#6b5a80] leading-snug line-clamp-2">
-                        {task.template}
-                      </p>
-                    </div>
-
-                    {!done && (
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <button
-                          onClick={() =>
-                            setPreview(preview === task.id ? null : task.id)
-                          }
-                          className="font-['Press_Start_2P'] text-[7px] px-2 py-1 bg-[#1a0a2e] border border-[#4a3a5e] text-[#6b5a80] rounded hover:border-[#7c3aed] hover:text-[#a855f7] transition-colors"
-                        >
-                          PREVIEW
-                        </button>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => submitTask(task.id, task.template)}
-                          disabled={isLoading || !!loading}
-                          className="font-['Press_Start_2P'] text-[7px] px-2 py-1.5 bg-[#7c3aed] border border-[#a855f7] text-white rounded disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                          style={{
-                            boxShadow: "0 0 10px rgba(124,58,237,0.4)",
-                          }}
-                        >
-                          {isLoading ? "..." : "TWEET"}
-                        </motion.button>
-                      </div>
-                    )}
-
-                    {done && (
-                      <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-700/30 rounded px-2 py-1">
-                        <img
-                          src={EMBER_ICON}
-                          alt="ember"
-                          className="w-3 h-3 object-contain"
-                        />
-                        <span className="font-['Press_Start_2P'] text-[7px] text-emerald-400">
-                          +500
-                        </span>
-                      </div>
-                    )}
+                {task1Status === "timer" && (
+                  <div className="text-center">
+                    <p
+                      className="font-['Press_Start_2P'] text-[14px] text-cyan-400"
+                      style={{ textShadow: "0 0 10px rgba(34,211,238,0.4)" }}
+                    >
+                      {Math.ceil(task1Timer / 1000)}s
+                    </p>
+                    <p className="font-['Press_Start_2P'] text-[6px] text-[#4a3a5e] mt-1">
+                      VERIFYING
+                    </p>
                   </div>
+                )}
 
-                  {/* Preview expand */}
-                  <AnimatePresence>
-                    {preview === task.id && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-3 pt-3 border-t border-[#1a0a2e]">
-                          <div className="bg-[#0d0420] border border-[#2d1a4e] rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <svg
-                                viewBox="0 0 24 24"
-                                className="w-3.5 h-3.5 fill-[#a855f7]"
-                              >
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                              </svg>
-                              <span className="font-['Press_Start_2P'] text-[7px] text-[#4a3a5e]">
-                                TWEET PREVIEW
-                              </span>
-                            </div>
-                            <p className="font-['VT323'] text-[15px] text-[#c4b5d4] leading-snug whitespace-pre-wrap">
-                              {task.template}
-                            </p>
-                          </div>
-                          <p className="font-['VT323'] text-[#4a3a5e] text-sm mt-2 text-center">
-                            Clicking TWEET opens X/Twitter. Come back after posting to
-                            receive your EMBER.
-                          </p>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            );
-          })}
+                {task1Status === "completed" && (
+                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-700/30 rounded-lg px-3 py-2">
+                    <img src={EMBER_ICON} alt="ember" className="w-3 h-3 object-contain" />
+                    <span className="font-['Press_Start_2P'] text-[8px] text-emerald-400">
+                      +500
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ── TASK 2: ENGAGEMENT (Locked until Task 1 done) ───────────────── */}
+        <div className="mt-8 mb-3">
+          <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
+            TWEET ENGAGEMENT
+          </p>
         </div>
 
-        {/* All done banner */}
-        <AnimatePresence>
-          {allDone && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="mt-8 bg-emerald-900/20 border-2 border-emerald-700/40 rounded-lg p-5 text-center"
-            >
-              <p className="font-['Press_Start_2P'] text-[10px] text-emerald-400 mb-1">
-                ALL TASKS DONE
+        {/* Tweet Card (like Earnity's embedded tweet) */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className={`relative rounded-xl border-2 overflow-hidden mb-4 ${
+            engagementUnlocked ? "border-[#2d1a4e] bg-[#0a0614]" : "border-[#1a0a2e] bg-[#06030f] opacity-60"
+          }`}
+        >
+          {/* Tweet Header */}
+          <div className="p-4 pb-2">
+            <div className="flex items-center gap-2 mb-3">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#a855f7]">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+                POST #2056754762163376307
+              </span>
+              <a
+                href={ENGAGEMENT_TWEET_URLS[0]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto font-['Press_Start_2P'] text-[6px] text-[#4a3a5e] hover:text-[#a855f7] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                OPEN ON X
+              </a>
+            </div>
+            
+            {/* Placeholder for tweet embed (no preview to avoid similarity) */}
+            <div className="bg-[#0d0420] border border-[#1a0a2e] rounded-lg p-4 text-center">
+              <p className="font-['VT323'] text-[#4a3a5e] text-base">
+                Complete Task 1 to unlock engagement rewards
               </p>
-              <p className="font-['VT323'] text-lg text-emerald-400/70">
-                Come back in {fmt(msLeft)} for a new set of tasks.
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </div>
+          </div>
 
-        {/* Ember balance note */}
+          {/* Engagement Buttons (Like Earnity's bottom row) */}
+          <div className="grid grid-cols-3 border-t border-[#1a0a2e]">
+            {ENGAGEMENT_TASKS.map((task) => {
+              const done = completedEngagement.has(task.id);
+              const timer = engagementTimers[task.id] || 0;
+              const isActive = engagementUnlocked && !done && timer === 0;
+
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => handleEngagement(task)}
+                  disabled={!isActive}
+                  className={`relative p-3 flex flex-col items-center gap-1 transition-all ${
+                    done
+                      ? "bg-emerald-900/10"
+                      : isActive
+                      ? "hover:bg-[#1a0a2e] cursor-pointer"
+                      : "cursor-not-allowed opacity-40"
+                  } ${task.id !== "comment_1" ? "border-r border-[#1a0a2e]" : ""}`}
+                >
+                  {done ? (
+                    <>
+                      <span className="font-['Press_Start_2P'] text-[10px] text-emerald-400">
+                        +{task.ember}
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-emerald-600">
+                        EMBER
+                      </span>
+                    </>
+                  ) : timer > 0 ? (
+                    <>
+                      <span
+                        className="font-['Press_Start_2P'] text-[12px] text-cyan-400"
+                        style={{ textShadow: "0 0 8px rgba(34,211,238,0.3)" }}
+                      >
+                        {Math.ceil(timer / 1000)}s
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-[#4a3a5e]">
+                        VERIFYING
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-['Press_Start_2P'] text-[10px] text-white">
+                        +{task.ember}
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-[#6b5a80]">
+                        {task.label}
+                      </span>
+                    </>
+                  )}
+
+                  {/* Flash effect */}
+                  {flashTask === task.id && (
+                    <motion.div
+                      initial={{ opacity: 0.6 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0 bg-amber-400/20 pointer-events-none"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lock overlay when not unlocked */}
+          {!engagementUnlocked && task1Status === "completed" && unlockTimer > 0 && (
+            <div className="absolute inset-0 bg-[#04020c]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+              <p className="font-['Press_Start_2P'] text-[10px] text-[#a855f7] mb-2">
+                LOCKED
+              </p>
+              <p
+                className="font-['Press_Start_2P'] text-[16px] text-cyan-400"
+                style={{ textShadow: "0 0 12px rgba(34,211,238,0.4)" }}
+              >
+                {formatTime(unlockTimer)}
+              </p>
+              <p className="font-['VT323'] text-[#4a3a5e] text-sm mt-1">
+                Until next engagement tasks
+              </p>
+            </div>
+          )}
+
+          {!engagementUnlocked && task1Status !== "completed" && (
+            <div className="absolute inset-0 bg-[#04020c]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+              <p className="font-['Press_Start_2P'] text-[9px] text-[#4a3a5e]">
+                COMPLETE TASK 1 TO UNLOCK
+              </p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ── TASK 2B: Second Tweet (Same structure, locked behind 8h) ─────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="relative rounded-xl border-2 border-[#1a0a2e] bg-[#06030f] opacity-60 overflow-hidden"
+        >
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#4a3a5e]">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="font-['Press_Start_2P'] text-[8px] text-[#2d1a4e]">
+                POST #2056407954455212476
+              </span>
+            </div>
+            <div className="bg-[#0d0420] border border-[#1a0a2e] rounded-lg p-4 text-center">
+              <p className="font-['VT323'] text-[#2d1a4e] text-base">
+                Available after 8-hour cooldown
+              </p>
+            </div>
+          </div>
+
+          <div className="absolute inset-0 bg-[#04020c]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+            <p className="font-['Press_Start_2P'] text-[9px] text-[#4a3a5e]">
+              {unlockTimer > 0 ? formatTime(unlockTimer) : "LOCKED"}
+            </p>
+          </div>
+        </motion.div>
+
+        {/* Balance Footer */}
         <div className="mt-8 flex items-center justify-center gap-2 opacity-50">
           <img src={EMBER_ICON} alt="ember" className="w-3 h-3 object-contain" />
           <span className="font-['Press_Start_2P'] text-[7px] text-[#4a3a5e]">
-            BALANCE: {(player?.gold || 0).toLocaleString()} EMBER
+            BALANCE: {emberBalance.toLocaleString()} EMBER
           </span>
         </div>
       </div>
 
-      {/* Flying tweet animation */}
+      {/* ── Comment Modal ───────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {flyingTweet && (
-          <FlyingTweet
-            text={flyingTweet}
-            onDone={() => setFlyingTweet(null)}
-          />
+        {showCommentModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+            onClick={() => setShowCommentModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 20 }}
+              transition={{ type: "spring", damping: 16 }}
+              className="bg-[#0a0614] border-2 border-[#7c3aed] rounded-lg p-6 w-full max-w-sm relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#22d3ee]" />
+              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#22d3ee]" />
+
+              <h2 className="font-['Press_Start_2P'] text-[10px] text-[#a855f7] mb-4">
+                SUBMIT COMMENT LINK
+              </h2>
+              <p className="font-['VT323'] text-[#6b5a80] text-base mb-4">
+                Paste the URL to your comment for verification
+              </p>
+
+              <input
+                type="url"
+                placeholder="https://x.com/.../status/..."
+                value={commentLink}
+                onChange={(e) => setCommentLink(e.target.value)}
+                className="w-full bg-[#0d0420] border border-[#2d1a4e] rounded px-3 py-2 font-['VT323'] text-base text-[#c4b5d4] placeholder-[#4a3a5e] focus:outline-none focus:border-[#7c3aed] transition-colors mb-4"
+              />
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={submitComment}
+                  disabled={!commentLink.trim() || loading === showCommentModal}
+                  className="flex-1 font-['Press_Start_2P'] text-[8px] px-4 py-2.5 bg-[#7c3aed] border border-[#a855f7] text-white rounded disabled:opacity-40"
+                >
+                  {loading === showCommentModal ? "..." : "SUBMIT +200"}
+                </motion.button>
+                <button
+                  onClick={() => setShowCommentModal(null)}
+                  className="font-['Press_Start_2P'] text-[8px] px-4 py-2.5 bg-[#1a0a2e] border border-[#4a3a5e] text-[#6b5a80] rounded hover:border-[#7c3aed] transition-colors"
+                >
+                  CANCEL
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
