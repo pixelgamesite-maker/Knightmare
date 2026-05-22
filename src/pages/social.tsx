@@ -18,7 +18,7 @@ const TASK_1_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(T
 
 const ENGAGEMENT_TWEET_URLS = [
   "https://x.com/KnightmaresETH/status/2057538104030814295",
-  "https://x.com/knightmareseth/status/2056407954455212476?s=46",
+  "https://x.com/i/status/2057484468508672156",
 ];
 
 const EIGHT_HOURS = 8 * 60 * 60 * 1000;
