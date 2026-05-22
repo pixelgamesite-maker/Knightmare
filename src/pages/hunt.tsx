@@ -431,4 +431,3 @@ export default function Hunt() {
     </div>
   );
 }
-              
