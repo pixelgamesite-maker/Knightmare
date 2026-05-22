@@ -18,13 +18,14 @@ type AggregatedLoot = {
 export default function Hunt() {
   const { player, invalidate: refreshPlayer } = usePlayer();
   const { invalidate: refreshInv } = useInventory();
-  const [loot, setLoot] = useState<AggregatedLoot | null>(null);
+  const [loot, setLoot] = useState<<AggregatedLoot | null>(null);
   const [opening, setOpening] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [count, setCount] = useState(1);
   const [msLeft, setMsLeft] = useState(0);
 
   // ── Use player.ember (renamed from gold) ──────────────────────────────────
+  const emberBalance = (player as any)?.ember ?? 0;
 
   const maxChests = useMemo(() => {
     return Math.floor(emberBalance / 500);
@@ -276,6 +277,161 @@ export default function Hunt() {
           }}
         >
           {opening ? "OPENING..." : `OPEN x${cappedCount}`}
+          <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-[#22d3ee]" />
+          <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
+        </motion.button>
+
+        {/* Claim Ember */}
+        <div className="mt-6 text-center">
+          <motion.button
+            whileHover={{ scale: canClaim ? 1.05 : 1 }}
+            whileTap={{ scale: canClaim ? 0.95 : 1 }}
+            onClick={claimEmber}
+            disabled={!canClaim || claiming}
+            className={`font-['Press_Start_2P'] text-[8px] px-6 py-2 rounded border-2 tracking-wider transition-all ${
+              canClaim
+                ? "bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/30"
+                : "bg-[#0d0420] border-[#1a0a2e] text-[#2d1a4e] cursor-not-allowed"
+            }`}
+          >
+            {claiming
+              ? "..."
+              : canClaim
+              ? "CLAIM EMBER"
+              : `CLAIM IN ${fmt(msLeft)}`}
+          </motion.button>
+          {canClaim && (
+            <p className="font-['VT323'] text-[#4a3a5e] text-sm mt-1">
+              100 – 1000 EMBER
+            </p>
+          )}
+        </div>
+
+        {/* Stats */}
+        <div className="mt-8 flex gap-6 text-center">
+          <div>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">OPENED</p>
+            <p className="text-[10px] text-cyan-400 mt-1">
+              {player?.total_chests_opened || 0}
+            </p>
+          </div>
+          <div>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">GTD</p>
+            <p className="text-[10px] text-purple-400 mt-1">
+              {player?.forged_gtd ? "YES" : "NO"}
+            </p>
+          </div>
+          <div>
+            <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">FCFS</p>
+            <p className="text-[10px] text-purple-400 mt-1">
+              {player?.forged_fcfs ? "YES" : "NO"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Loot Modal */}
+      <AnimatePresence>
+        {loot && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              exit={{ scale: 0, rotate: 10 }}
+              transition={{ type: "spring", damping: 15 }}
+              className="bg-[#0a0614] border-2 border-[#7c3aed] p-6 rounded text-center relative max-w-sm w-full max-h-[80dvh] overflow-y-auto"
+              style={{ boxShadow: "0 0 40px rgba(124,58,237,0.3)" }}
+            >
+              <div className="absolute -top-1 -left-1 w-2 h-2 bg-[#22d3ee]" />
+              <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-[#22d3ee]" />
+
+              <p className="font-['Press_Start_2P'] text-[10px] text-cyan-400 mb-1">
+                CRATES OPENED
+              </p>
+              <p className="font-['VT323'] text-2xl text-white mb-4">{loot.total}</p>
+
+              <div className="space-y-3">
+                {loot.ember > 0 && (
+                  <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-center justify-center gap-2"
+                  >
+                    <img src={EMBER_ICON} alt="ember" className="w-5 h-5 object-contain" />
+                    <div>
+                      <p
+                        className="font-['Press_Start_2P'] text-[16px] text-amber-400"
+                        style={{ textShadow: "0 0 20px rgba(251,191,36,0.5)" }}
+                      >
+                        +{loot.ember.toLocaleString()}
+                      </p>
+                      <p className="font-['Press_Start_2P'] text-[8px] text-amber-400/70 mt-1">
+                        TOTAL EMBER
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {Object.entries(loot.fragments).map(([key, qty], i) => (
+                  <motion.div
+                    key={key}
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 + i * 0.08 }}
+                    className="flex items-center gap-3 bg-[#1a0a2e] border border-[#7c3aed]/30 rounded p-3"
+                  >
+                    <img
+                      src={`${CDN}/${FRAGMENTS[key].file}`}
+                      alt=""
+                      className="w-10 h-10 object-contain drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]"
+                    />
+                    <div className="text-left flex-1">
+                      <p className="font-['VT323'] text-lg text-[#c4b5d4]">
+                        {FRAGMENTS[key].name}
+                      </p>
+                      <p className="font-['Press_Start_2P'] text-[8px] text-cyan-400">
+                        x{qty}
+                      </p>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {loot.empty > 0 && (
+                  <motion.div
+                    initial={{ y: 10, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="bg-[#0d0420] border border-[#2d1a4e] rounded p-3"
+                  >
+                    <p className="font-['Press_Start_2P'] text-[10px] text-[#6b5a80]">
+                      {loot.empty} EMPTY {loot.empty === 1 ? "CRATE" : "CRATES"}
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setLoot(null)}
+                className="mt-5 font-['Press_Start_2P'] text-[8px] px-4 py-2 bg-[#7c3aed]/20 border border-[#7c3aed] text-[#a855f7] rounded hover:bg-[#7c3aed]/40 transition-colors"
+              >
+                CLOSE
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+cappedCount}`}
           <div className="absolute -top-1 -left-1 w-1.5 h-1.5 bg-[#22d3ee]" />
           <div className="absolute -bottom-1 -right-1 w-1.5 h-1.5 bg-[#22d3ee]" />
         </motion.button>
