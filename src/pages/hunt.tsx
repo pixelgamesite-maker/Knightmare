@@ -105,7 +105,7 @@ useEffect(() => {
   const claimEmber = async () => {
     if (!canClaim) return;
     setClaiming(true);
-    const { data } = await supabase.rpc("claim_gold"); // RPC name unchanged in DB
+    const { data } = await supabase.rpc("claim_ember"); // RPC name unchanged in DB
     setClaiming(false);
     if (data?.success) refreshPlayer();
     else alert(data?.error || "Cooldown active");
