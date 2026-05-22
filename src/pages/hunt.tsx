@@ -35,30 +35,30 @@ export default function Hunt() {
   const totalCost = cappedCount * 500;
   const setMax = () => setCount(maxChests);
 
-  // ── 30-min cooldown using last_ember_claim ─────────────────────────────────
-  const THIRTY_MIN = 30 * 60 * 1000;
+  // ── 1-hour cooldown using last_ember_claim ────────────────────────────────
+const ONE_HOUR = 60 * 60 * 1000;
 
-  const lastClaim = (player as any)?.last_ember_claim;
+const lastClaim = (player as any)?.last_ember_claim;
 
-  const canClaim =
-    !lastClaim ||
-    new Date(lastClaim).getTime() + THIRTY_MIN < Date.now();
+const canClaim =
+  !lastClaim ||
+  new Date(lastClaim).getTime() + ONE_HOUR < Date.now();
 
-  // Live countdown ticker
-  useEffect(() => {
-    if (canClaim) { setMsLeft(0); return; }
-    const tick = () => {
-      const left = Math.max(
-        0,
-        new Date(lastClaim).getTime() + THIRTY_MIN - Date.now()
-      );
-      setMsLeft(left);
-      if (left === 0) refreshPlayer();
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [lastClaim, canClaim]);
+// Live countdown ticker
+useEffect(() => {
+  if (canClaim) { setMsLeft(0); return; }
+  const tick = () => {
+    const left = Math.max(
+      0,
+      new Date(lastClaim).getTime() + ONE_HOUR - Date.now()
+    );
+    setMsLeft(left);
+    if (left === 0) refreshPlayer();
+  };
+  tick();
+  const id = setInterval(tick, 1000);
+  return () => clearInterval(id);
+}, [lastClaim, canClaim]);
 
   const fmt = (ms: number) => {
     const m = Math.floor(ms / 60000);
