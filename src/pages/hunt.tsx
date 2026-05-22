@@ -18,7 +18,7 @@ type AggregatedLoot = {
 export default function Hunt() {
   const { player, invalidate: refreshPlayer } = usePlayer();
   const { invalidate: refreshInv } = useInventory();
-  const [loot, setLoot] = useState<<AggregatedLoot | null>(null);
+  const [loot, setLoot] = useState<AggregatedLoot | null>(null);
   const [opening, setOpening] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [count, setCount] = useState(1);
