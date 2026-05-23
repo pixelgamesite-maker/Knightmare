@@ -19,6 +19,7 @@ const TASK_1_URL = `https://twitter.com/intent/tweet?text=${encodeURIComponent(T
 const ENGAGEMENT_TWEET_URLS = [
   "https://x.com/KnightmaresETH/status/2057855820923048253",
   "https://x.com/i/status/2057484468508672156",
+  "https://x.com/KnightmaresETH/status/2058254226698969555",
 ];
 
 const EIGHT_HOURS = 8 * 60 * 60 * 1000;
@@ -40,6 +41,12 @@ const ENGAGEMENT_TASKS: EngagementTask[] = [
   { id: "like_1", label: "LIKE", ember: 150, action: "like", url: ENGAGEMENT_TWEET_URLS[0] },
   { id: "retweet_1", label: "RETWEET", ember: 150, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
   { id: "comment_1", label: "COMMENT", ember: 200, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
+];
+
+const ENGAGEMENT_TASKS_3: EngagementTask[] = [
+  { id: "like_3", label: "LIKE", ember: 150, action: "like", url: ENGAGEMENT_TWEET_URLS[2] },
+  { id: "retweet_3", label: "RETWEET", ember: 150, action: "retweet", url: ENGAGEMENT_TWEET_URLS[2] },
+  { id: "comment_3", label: "COMMENT", ember: 200, action: "comment", url: ENGAGEMENT_TWEET_URLS[2] },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -67,6 +74,7 @@ export default function SocialTasks() {
   const [unlockTimer, setUnlockTimer] = useState(0);
   const [completedEngagement, setCompletedEngagement] = useState<Set<string>>(new Set());
   const [engagementTimers, setEngagementTimers] = useState<Record<string, number>>({});
+  const [task3Unlocked, setTask3Unlocked] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState<string | null>(null);
   const [commentLink, setCommentLink] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
@@ -98,6 +106,12 @@ export default function SocialTasks() {
         // Engagement section stays locked (2B timer running), but engagement 1 tasks visible
         // We still show engagement 1 tasks as completed, so keep engagementUnlocked true
         setEngagementUnlocked(true);
+
+        // Unlock task 3 if at least one engagement task is completed
+        const completed2 = new Set<string>(JSON.parse(savedEngagement));
+        if (["like_1", "retweet_1", "comment_1"].some((id) => completed2.has(id))) {
+          setTask3Unlocked(true);
+        }
       } else {
         // No engagement done yet — unlock engagement 1 immediately
         setEngagementUnlocked(true);
@@ -203,6 +217,9 @@ export default function SocialTasks() {
       // Start 8h timer for Tweet 2B on first completed engagement task
       startTweet2BTimer();
 
+      // Unlock task 3 once any engagement task is done
+      setTask3Unlocked(true);
+
       setFlashTask(task.id);
       setTimeout(() => setFlashTask(null), 2000);
     }, THIRTY_SECONDS);
@@ -242,6 +259,9 @@ export default function SocialTasks() {
 
       // Start 8h timer for Tweet 2B
       startTweet2BTimer();
+
+      // Unlock task 3
+      setTask3Unlocked(true);
 
       setFlashTask(showCommentModal);
       setTimeout(() => setFlashTask(null), 2000);
@@ -538,6 +558,128 @@ export default function SocialTasks() {
             <div className="absolute inset-0 bg-[#04020c]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
               <p className="font-['Press_Start_2P'] text-[9px] text-[#4a3a5e]">
                 LOCKED
+              </p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* ── TASK 3: ENGAGEMENT (new tweet) ──────────────────────────────── */}
+        <div className="mt-8 mb-3">
+          <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
+            TWEET ENGAGEMENT #3
+          </p>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className={`relative rounded-xl border-2 overflow-hidden mb-4 ${
+            task3Unlocked ? "border-[#2d1a4e] bg-[#0a0614]" : "border-[#1a0a2e] bg-[#06030f] opacity-60"
+          }`}
+        >
+          {/* Tweet Header */}
+          <div className="p-4 pb-2">
+            <div className="flex items-center gap-2 mb-3">
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#a855f7]">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
+                POST #2058254226698969555
+              </span>
+              <a
+                href={ENGAGEMENT_TWEET_URLS[2]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-auto font-['Press_Start_2P'] text-[6px] text-[#4a3a5e] hover:text-[#a855f7] transition-colors flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                OPEN ON X
+              </a>
+            </div>
+
+            <div className="bg-[#0d0420] border border-[#1a0a2e] rounded-lg p-4 text-center">
+              <p className="font-['VT323'] text-[#4a3a5e] text-base">
+                {task3Unlocked
+                  ? "Like, retweet or comment to earn EMBER"
+                  : "Complete Engagement Task to unlock"}
+              </p>
+            </div>
+          </div>
+
+          {/* Engagement Buttons */}
+          <div className="grid grid-cols-3 border-t border-[#1a0a2e]">
+            {ENGAGEMENT_TASKS_3.map((task) => {
+              const done = completedEngagement.has(task.id);
+              const timer = engagementTimers[task.id] || 0;
+              const isActive = task3Unlocked && !done && timer === 0;
+
+              return (
+                <button
+                  key={task.id}
+                  onClick={() => handleEngagement(task)}
+                  disabled={!isActive}
+                  className={`relative p-3 flex flex-col items-center gap-1 transition-all ${
+                    done
+                      ? "bg-emerald-900/10"
+                      : isActive
+                      ? "hover:bg-[#1a0a2e] cursor-pointer"
+                      : "cursor-not-allowed opacity-40"
+                  } ${task.id !== "comment_3" ? "border-r border-[#1a0a2e]" : ""}`}
+                >
+                  {done ? (
+                    <>
+                      <span className="font-['Press_Start_2P'] text-[10px] text-emerald-400">
+                        +{task.ember}
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-emerald-600">
+                        EMBER
+                      </span>
+                    </>
+                  ) : timer > 0 ? (
+                    <>
+                      <span
+                        className="font-['Press_Start_2P'] text-[12px] text-cyan-400"
+                        style={{ textShadow: "0 0 8px rgba(34,211,238,0.3)" }}
+                      >
+                        {Math.ceil(timer / 1000)}s
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-[#4a3a5e]">
+                        VERIFYING
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-['Press_Start_2P'] text-[10px] text-white">
+                        +{task.ember}
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-[#6b5a80]">
+                        {task.label}
+                      </span>
+                    </>
+                  )}
+
+                  {/* Flash effect */}
+                  {flashTask === task.id && (
+                    <motion.div
+                      initial={{ opacity: 0.6 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0 bg-amber-400/20 pointer-events-none"
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Lock overlay when engagement 1 not done */}
+          {!task3Unlocked && (
+            <div className="absolute inset-0 bg-[#04020c]/80 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+              <p className="font-['Press_Start_2P'] text-[9px] text-[#4a3a5e]">
+                COMPLETE ENGAGEMENT TASK TO UNLOCK
               </p>
             </div>
           )}
