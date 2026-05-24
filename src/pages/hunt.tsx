@@ -263,10 +263,10 @@ export default function Hunt() {
             {/* Labels */}
             <div className="flex flex-col gap-1 pl-1">
               <p className="font-['Press_Start_2P'] text-[8px] text-[#a855f7]">
-                HUNT RESET
+                THE HUNT ENDs
               </p>
               <p className="font-['VT323'] text-[#6b5a80] text-sm leading-snug">
-                Next loot cycle resets in
+                Forge your knight before the timer hits zero
               </p>
               <div className="flex gap-2 mt-1">
                 {(["h", "m", "s"] as const).map((unit) => (
