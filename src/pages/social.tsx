@@ -96,12 +96,8 @@ export default function SocialTasks() {
     }
 
     if (task.action === "quote") {
-      const quoteUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(task.url)}`;
-      window.open(quoteUrl, "_blank");
-    } else {
-      window.open(task.url, "_blank");
+  window.open(task.url, "_blank");
     }
-
     setEngagementTimers((prev) => ({ ...prev, [task.id]: THIRTY_SECONDS }));
 
     setTimeout(() => {
