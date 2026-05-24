@@ -8,6 +8,10 @@ import TopBar from "@/components/layout/TopBar";
 
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
+// ── 48-hour hunt reset timer key ─────────────────────────────────────────────
+const HUNT_TIMER_KEY = "km_hunt_reset_end";
+const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+
 type AggregatedLoot = {
   fragments: Record<string, number>;
   ember: number;
@@ -24,7 +28,54 @@ export default function Hunt() {
   const [count, setCount] = useState(1);
   const [msLeft, setMsLeft] = useState(0);
 
-  // ── Use player.ember (renamed from gold) ──────────────────────────────────
+  // ── 48-hour countdown (persisted in localStorage) ─────────────────────────
+  const [huntMsLeft, setHuntMsLeft] = useState(0);
+
+  useEffect(() => {
+    // Read (or initialise) the end timestamp
+    const stored = localStorage.getItem(HUNT_TIMER_KEY);
+    let endTs: number;
+
+    if (stored) {
+      endTs = parseInt(stored, 10);
+    } else {
+      // First visit — start the 48 h clock from now
+      endTs = Date.now() + FORTY_EIGHT_HOURS;
+      localStorage.setItem(HUNT_TIMER_KEY, String(endTs));
+    }
+
+    const tick = () => {
+      const left = Math.max(0, endTs - Date.now());
+      setHuntMsLeft(left);
+
+      // When it hits 0, restart the 48 h window automatically
+      if (left === 0) {
+        const next = Date.now() + FORTY_EIGHT_HOURS;
+        localStorage.setItem(HUNT_TIMER_KEY, String(next));
+        endTs = next;
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const fmtHunt = (ms: number) => {
+    const totalSec = Math.floor(ms / 1000);
+    const h = Math.floor(totalSec / 3600);
+    const m = Math.floor((totalSec % 3600) / 60);
+    const s = totalSec % 60;
+    return {
+      h: String(h).padStart(2, "0"),
+      m: String(m).padStart(2, "0"),
+      s: String(s).padStart(2, "0"),
+    };
+  };
+
+  const huntTime = fmtHunt(huntMsLeft);
+
+  // ── Use player.ember ───────────────────────────────────────────────────────
   const emberBalance = (player as any)?.ember ?? 0;
 
   const maxChests = useMemo(() => {
@@ -36,29 +87,26 @@ export default function Hunt() {
   const setMax = () => setCount(maxChests);
 
   // ── 1-hour cooldown using last_ember_claim ────────────────────────────────
-const ONE_HOUR = 60 * 60 * 1000;
+  const ONE_HOUR = 60 * 60 * 1000;
+  const lastClaim = (player as any)?.last_ember_claim;
+  const canClaim =
+    !lastClaim ||
+    new Date(lastClaim).getTime() + ONE_HOUR < Date.now();
 
-const lastClaim = (player as any)?.last_ember_claim;
-
-const canClaim =
-  !lastClaim ||
-  new Date(lastClaim).getTime() + ONE_HOUR < Date.now();
-
-// Live countdown ticker
-useEffect(() => {
-  if (canClaim) { setMsLeft(0); return; }
-  const tick = () => {
-    const left = Math.max(
-      0,
-      new Date(lastClaim).getTime() + ONE_HOUR - Date.now()
-    );
-    setMsLeft(left);
-    if (left === 0) refreshPlayer();
-  };
-  tick();
-  const id = setInterval(tick, 1000);
-  return () => clearInterval(id);
-}, [lastClaim, canClaim]);
+  useEffect(() => {
+    if (canClaim) { setMsLeft(0); return; }
+    const tick = () => {
+      const left = Math.max(
+        0,
+        new Date(lastClaim).getTime() + ONE_HOUR - Date.now()
+      );
+      setMsLeft(left);
+      if (left === 0) refreshPlayer();
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [lastClaim, canClaim]);
 
   const fmt = (ms: number) => {
     const m = Math.floor(ms / 60000);
@@ -105,13 +153,18 @@ useEffect(() => {
   const claimEmber = async () => {
     if (!canClaim) return;
     setClaiming(true);
-    const { data } = await supabase.rpc("claim_ember"); // RPC name unchanged in DB
+    const { data } = await supabase.rpc("claim_ember");
     setClaiming(false);
     if (data?.success) refreshPlayer();
     else alert(data?.error || "Cooldown active");
   };
 
   const ticks = [1, 25, 50, 75, 100];
+
+  // Percentage remaining for the ring
+  const huntPct = huntMsLeft / FORTY_EIGHT_HOURS;
+  const RING_R = 36;
+  const RING_CIRC = 2 * Math.PI * RING_R;
 
   return (
     <div className="min-h-[100dvh] bg-[#04020c] text-white relative overflow-hidden">
@@ -132,6 +185,104 @@ useEffect(() => {
       />
 
       <div className="pt-24 pb-10 px-4 flex flex-col items-center justify-center min-h-[100dvh] relative z-20">
+
+        {/* ── 48-HOUR HUNT RESET COUNTDOWN ──────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-8 w-full max-w-xs"
+        >
+          <div
+            className="relative rounded-xl border border-[#2d1a4e] bg-[#0a0614] p-4 flex items-center gap-4 overflow-hidden"
+            style={{ boxShadow: "0 0 20px rgba(124,58,237,0.08)" }}
+          >
+            {/* Subtle glow strip */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-0.5 rounded-l-xl"
+              style={{
+                background: "linear-gradient(to bottom, #7c3aed, #22d3ee, #7c3aed)",
+                opacity: 0.6,
+              }}
+            />
+
+            {/* SVG ring */}
+            <div className="relative shrink-0 w-[88px] h-[88px] flex items-center justify-center">
+              <svg
+                width="88"
+                height="88"
+                viewBox="0 0 88 88"
+                className="-rotate-90 absolute inset-0"
+              >
+                {/* Track */}
+                <circle
+                  cx="44"
+                  cy="44"
+                  r={RING_R}
+                  fill="none"
+                  stroke="#1a0a2e"
+                  strokeWidth="5"
+                />
+                {/* Progress */}
+                <circle
+                  cx="44"
+                  cy="44"
+                  r={RING_R}
+                  fill="none"
+                  stroke="url(#huntGrad)"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                  strokeDasharray={RING_CIRC}
+                  strokeDashoffset={RING_CIRC * (1 - huntPct)}
+                  style={{ transition: "stroke-dashoffset 1s linear" }}
+                />
+                <defs>
+                  <linearGradient id="huntGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#7c3aed" />
+                    <stop offset="100%" stopColor="#22d3ee" />
+                  </linearGradient>
+                </defs>
+              </svg>
+
+              {/* Time digits inside ring */}
+              <div className="flex flex-col items-center z-10">
+                <span
+                  className="font-['Press_Start_2P'] text-[11px] text-cyan-400 leading-none"
+                  style={{ textShadow: "0 0 10px rgba(34,211,238,0.5)" }}
+                >
+                  {huntTime.h}:{huntTime.m}
+                </span>
+                <span
+                  className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80] mt-0.5"
+                >
+                  :{huntTime.s}
+                </span>
+              </div>
+            </div>
+
+            {/* Labels */}
+            <div className="flex flex-col gap-1 pl-1">
+              <p className="font-['Press_Start_2P'] text-[8px] text-[#a855f7]">
+                HUNT RESET
+              </p>
+              <p className="font-['VT323'] text-[#6b5a80] text-sm leading-snug">
+                Next loot cycle resets in
+              </p>
+              <div className="flex gap-2 mt-1">
+                {(["h", "m", "s"] as const).map((unit) => (
+                  <div key={unit} className="flex flex-col items-center">
+                    <span className="font-['Press_Start_2P'] text-[9px] text-white">
+                      {huntTime[unit]}
+                    </span>
+                    <span className="font-['Press_Start_2P'] text-[5px] text-[#4a3a5e] mt-0.5">
+                      {unit === "h" ? "HRS" : unit === "m" ? "MIN" : "SEC"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Chest cost */}
         <motion.div
