@@ -21,6 +21,7 @@ const ENGAGEMENT_TWEET_URLS = [
   "https://x.com/i/status/2057538104030814295",
   "https://x.com/i/status/2057855820923048253",
   "https://x.com/i/status/2058254226698969555",
+  "https://x.com/KnightmaresETH/status/2058506638521237998",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
@@ -28,6 +29,7 @@ const ENGAGEMENT_TWEET_IDS = [
   "2057538104030814295",
   "2057855820923048253",
   "2058254226698969555",
+  "2058506638521237998",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
@@ -40,8 +42,9 @@ interface EngagementTask {
   id: string;
   label: string;
   ember: number;
-  action: "like" | "retweet" | "comment";
+  action: "like" | "retweet" | "comment" | "quote";
   url: string;
+  optional?: boolean;
 }
 
 // Each group maps to one tweet URL
@@ -66,6 +69,13 @@ const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
     { id: "retweet_4", label: "RETWEET", ember: 150, action: "retweet", url: ENGAGEMENT_TWEET_URLS[3] },
     { id: "comment_4", label: "COMMENT", ember: 200, action: "comment", url: ENGAGEMENT_TWEET_URLS[3] },
   ],
+  // ── NEW GROUP: tweet 5 — like / retweet / comment / quote (optional) ──────
+  [
+    { id: "like_5",    label: "LIKE",    ember: 200, action: "like",    url: ENGAGEMENT_TWEET_URLS[4] },
+    { id: "retweet_5", label: "RETWEET", ember: 200, action: "retweet", url: ENGAGEMENT_TWEET_URLS[4] },
+    { id: "comment_5", label: "COMMENT", ember: 200, action: "comment", url: ENGAGEMENT_TWEET_URLS[4] },
+    { id: "quote_5",   label: "QUOTE",   ember: 200, action: "quote",   url: ENGAGEMENT_TWEET_URLS[4], optional: true },
+  ],
 ];
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -74,8 +84,8 @@ export default function SocialTasks() {
   const { player, invalidate: refreshPlayer } = usePlayer();
   const [task1Status, setTask1Status] = useState<TaskStatus>("available");
   const [task1Timer, setTask1Timer] = useState(0);
-  // Which engagement groups are unlocked (by index)
-  const [unlockedGroups, setUnlockedGroups] = useState<boolean[]>([false, false, false, false]);
+  // Which engagement groups are unlocked (by index) — now 5 groups
+  const [unlockedGroups, setUnlockedGroups] = useState<boolean[]>([false, false, false, false, false]);
   const [completedEngagement, setCompletedEngagement] = useState<Set<string>>(new Set());
   const [engagementTimers, setEngagementTimers] = useState<Record<string, number>>({});
   const [showCommentModal, setShowCommentModal] = useState<string | null>(null);
@@ -95,7 +105,7 @@ export default function SocialTasks() {
       setTask1Status("completed");
 
       // Group 1 always unlocked once task 1 done
-      const unlocked = [true, false, false, false];
+      const unlocked = [true, false, false, false, false];
 
       if (savedEngagement) {
         const completed = new Set<string>(JSON.parse(savedEngagement));
@@ -106,6 +116,7 @@ export default function SocialTasks() {
           ["like_1", "retweet_1", "comment_1"],
           ["like_2", "retweet_2", "comment_2"],
           ["like_3", "retweet_3", "comment_3"],
+          ["like_4", "retweet_4", "comment_4"],
         ];
         groupIds.forEach((ids, i) => {
           if (ids.some((id) => completed.has(id))) {
@@ -147,12 +158,10 @@ export default function SocialTasks() {
     setTask1Status("timer");
     setTask1Timer(THIRTY_SECONDS);
 
-    // Auto-complete after 30s
     setTimeout(() => {
       setTask1Status("completed");
       localStorage.setItem("km_task1", "completed");
 
-      // Award 500 EMBER
       supabase.rpc("complete_social_task", {
         p_task_id: "post_bullish_tweet",
         p_cycle_start: new Date().toISOString(),
@@ -160,8 +169,7 @@ export default function SocialTasks() {
         if (data?.success) refreshPlayer();
       });
 
-      // Unlock engagement group 1 immediately
-      setUnlockedGroups([true, false, false, false]);
+      setUnlockedGroups([true, false, false, false, false]);
 
       setFlashTask("task1");
       setTimeout(() => setFlashTask(null), 2000);
@@ -181,16 +189,19 @@ export default function SocialTasks() {
   const handleEngagement = useCallback((task: EngagementTask, groupIndex: number) => {
     if (!unlockedGroups[groupIndex] || completedEngagement.has(task.id)) return;
 
-    // For comment task, show modal instead of timer
     if (task.action === "comment") {
       setShowCommentModal(task.id);
       return;
     }
 
-    // Open the tweet
-    window.open(task.url, "_blank");
+    // For quote: open tweet compose with quote URL
+    if (task.action === "quote") {
+      const quoteUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(task.url)}`;
+      window.open(quoteUrl, "_blank");
+    } else {
+      window.open(task.url, "_blank");
+    }
 
-    // Start 30s verification timer
     setEngagementTimers((prev) => ({ ...prev, [task.id]: THIRTY_SECONDS }));
 
     setTimeout(() => {
@@ -200,7 +211,6 @@ export default function SocialTasks() {
         return next;
       });
 
-      // Award EMBER
       supabase.rpc("complete_social_task", {
         p_task_id: task.id,
         p_cycle_start: new Date().toISOString(),
@@ -208,7 +218,6 @@ export default function SocialTasks() {
         if (data?.success) refreshPlayer();
       });
 
-      // Unlock next group
       unlockNextGroup(groupIndex);
 
       setFlashTask(task.id);
@@ -217,14 +226,14 @@ export default function SocialTasks() {
   }, [unlockedGroups, completedEngagement, refreshPlayer, unlockNextGroup]);
 
   // ── Submit Comment Link ────────────────────────────────────────────────────
+  const [commentModalGroup, setCommentModalGroup] = useState(0);
+
   const submitComment = useCallback((groupIndex: number) => {
     if (!commentLink.trim() || !showCommentModal) return;
 
     setLoading(showCommentModal);
-
     const taskId = showCommentModal;
 
-    // Store for approval
     supabase.from("pending_comments").insert({
       user_id: player?.id,
       task_id: taskId,
@@ -235,14 +244,12 @@ export default function SocialTasks() {
       setShowCommentModal(null);
       setCommentLink("");
 
-      // Mark as completed
       setCompletedEngagement((prev) => {
         const next = new Set([...prev, taskId]);
         localStorage.setItem("km_engagement", JSON.stringify([...next]));
         return next;
       });
 
-      // Award immediately for UX (admin can revoke if fake)
       supabase.rpc("complete_social_task", {
         p_task_id: taskId,
         p_cycle_start: new Date().toISOString(),
@@ -250,16 +257,12 @@ export default function SocialTasks() {
         if (data?.success) refreshPlayer();
       });
 
-      // Unlock next group
       unlockNextGroup(groupIndex);
 
       setFlashTask(taskId);
       setTimeout(() => setFlashTask(null), 2000);
     });
   }, [commentLink, showCommentModal, player?.id, refreshPlayer, unlockNextGroup]);
-
-  // Track which group the open comment modal belongs to
-  const [commentModalGroup, setCommentModalGroup] = useState(0);
 
   const emberBalance = (player as any)?.ember ?? 0;
 
@@ -332,7 +335,6 @@ export default function SocialTasks() {
                 </p>
               </div>
 
-              {/* Right side: Timer or Button */}
               <div className="shrink-0 flex flex-col items-end gap-2">
                 {task1Status === "available" && (
                   <motion.button
@@ -373,7 +375,7 @@ export default function SocialTasks() {
           </div>
         </motion.div>
 
-        {/* ── ENGAGEMENT TASKS (groups 1–4) ────────────────────────────────── */}
+        {/* ── ENGAGEMENT TASKS (groups 1–5) ────────────────────────────────── */}
         <div className="mt-8 mb-3">
           <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
             TWEET ENGAGEMENT
@@ -384,6 +386,7 @@ export default function SocialTasks() {
           const isUnlocked = unlockedGroups[groupIndex];
           const tweetId = ENGAGEMENT_TWEET_IDS[groupIndex];
           const tweetUrl = ENGAGEMENT_TWEET_URLS[groupIndex];
+          const isNewGroup = groupIndex === 4;
 
           return (
             <motion.div
@@ -392,23 +395,40 @@ export default function SocialTasks() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 * (groupIndex + 1) }}
               className={`relative rounded-xl border-2 overflow-hidden mb-4 ${
-                isUnlocked ? "border-[#2d1a4e] bg-[#0a0614]" : "border-[#1a0a2e] bg-[#06030f] opacity-60"
+                isUnlocked
+                  ? isNewGroup
+                    ? "border-amber-600/50 bg-[#0d0a04]"
+                    : "border-[#2d1a4e] bg-[#0a0614]"
+                  : "border-[#1a0a2e] bg-[#06030f] opacity-60"
               }`}
             >
+              {/* Highlight badge for new group */}
+              {isNewGroup && (
+                <div className="absolute top-3 right-3 z-20">
+                  <span className="font-['Press_Start_2P'] text-[6px] px-2 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-400 rounded">
+                    NEW
+                  </span>
+                </div>
+              )}
+
               {/* Tweet Header */}
               <div className="p-4 pb-2">
                 <div className="flex items-center gap-2 mb-3">
-                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#a855f7]">
+                  <svg viewBox="0 0 24 24" className={`w-4 h-4 ${isNewGroup ? "fill-amber-400" : "fill-[#a855f7]"}`}>
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
-                  <span className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">
-                    POST #{tweetId}
+                  <span className={`font-['Press_Start_2P'] text-[8px] ${isNewGroup ? "text-amber-400/70" : "text-[#6b5a80]"}`}>
+                    POST #{tweetId.slice(-6)}
                   </span>
                   <a
                     href={tweetUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-auto font-['Press_Start_2P'] text-[6px] text-[#4a3a5e] hover:text-[#a855f7] transition-colors flex items-center gap-1"
+                    className={`ml-auto font-['Press_Start_2P'] text-[6px] transition-colors flex items-center gap-1 ${
+                      isNewGroup
+                        ? "text-amber-600/60 hover:text-amber-400"
+                        : "text-[#4a3a5e] hover:text-[#a855f7]"
+                    }`}
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -417,19 +437,25 @@ export default function SocialTasks() {
                   </a>
                 </div>
 
-                <div className="bg-[#0d0420] border border-[#1a0a2e] rounded-lg p-4 text-center">
-                  <p className="font-['VT323'] text-[#4a3a5e] text-base">
-                    {isUnlocked
-                      ? "Like, retweet or comment to earn EMBER"
-                      : groupIndex === 0
-                      ? "Complete Tweet Task to unlock"
-                      : "Complete previous engagement to unlock"}
-                  </p>
+                <div className={`border rounded-lg p-3 text-center ${isNewGroup ? "bg-amber-900/10 border-amber-800/20" : "bg-[#0d0420] border-[#1a0a2e]"}`}>
+                  {isNewGroup && isUnlocked ? (
+                    <p className="font-['VT323'] text-amber-400/70 text-base">
+                      800 EMBER total — Like, Retweet, Comment + optional Quote
+                    </p>
+                  ) : (
+                    <p className="font-['VT323'] text-[#4a3a5e] text-base">
+                      {isUnlocked
+                        ? "Like, retweet or comment to earn EMBER"
+                        : groupIndex === 0
+                        ? "Complete Tweet Task to unlock"
+                        : "Complete previous engagement to unlock"}
+                    </p>
+                  )}
                 </div>
               </div>
 
-              {/* Engagement Buttons */}
-              <div className="grid grid-cols-3 border-t border-[#1a0a2e]">
+              {/* Engagement Buttons — dynamic column count */}
+              <div className={`grid border-t ${isNewGroup ? "border-amber-900/30 grid-cols-4" : "grid-cols-3 border-[#1a0a2e]"}`}>
                 {group.map((task, taskIndex) => {
                   const done = completedEngagement.has(task.id);
                   const timer = engagementTimers[task.id] || 0;
@@ -450,10 +476,19 @@ export default function SocialTasks() {
                         done
                           ? "bg-emerald-900/10"
                           : isActive
-                          ? "hover:bg-[#1a0a2e] cursor-pointer"
+                          ? isNewGroup
+                            ? "hover:bg-amber-900/10 cursor-pointer"
+                            : "hover:bg-[#1a0a2e] cursor-pointer"
                           : "cursor-not-allowed opacity-40"
-                      } ${!isLast ? "border-r border-[#1a0a2e]" : ""}`}
+                      } ${!isLast ? isNewGroup ? "border-r border-amber-900/30" : "border-r border-[#1a0a2e]" : ""}`}
                     >
+                      {/* Optional badge */}
+                      {task.optional && !done && (
+                        <span className="font-['Press_Start_2P'] text-[5px] text-amber-600/60 mb-0.5">
+                          OPTIONAL
+                        </span>
+                      )}
+
                       {done ? (
                         <>
                           <span className="font-['Press_Start_2P'] text-[10px] text-emerald-400">
@@ -477,16 +512,15 @@ export default function SocialTasks() {
                         </>
                       ) : (
                         <>
-                          <span className="font-['Press_Start_2P'] text-[10px] text-white">
+                          <span className={`font-['Press_Start_2P'] text-[10px] ${isNewGroup ? "text-amber-300" : "text-white"}`}>
                             +{task.ember}
                           </span>
-                          <span className="font-['Press_Start_2P'] text-[6px] text-[#6b5a80]">
+                          <span className={`font-['Press_Start_2P'] text-[6px] ${isNewGroup ? "text-amber-600/70" : "text-[#6b5a80]"}`}>
                             {task.label}
                           </span>
                         </>
                       )}
 
-                      {/* Flash effect */}
                       {flashTask === task.id && (
                         <motion.div
                           initial={{ opacity: 0.6 }}
