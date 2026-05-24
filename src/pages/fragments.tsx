@@ -118,5 +118,5 @@ const FRAGMENT_NAMES: Record<string, string> = {
   gloves: "Gloves", boots: "Boots",
   doom_potion: "Doom Potion",
   book_of_reincarnation: "Book of Reincarnation",
-  heart_of_fire: "Heart of Fire",
+  dragon_heart: "Dragon Heart",  // ← renamed from heart_of_fire
 };
