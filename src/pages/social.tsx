@@ -62,7 +62,7 @@ export default function SocialTasks() {
     }
   }, []);
 
-  // ── Global countdown ticker ──────────────────────────────────────────────
+  // ── Global countdown ticker ────────────────────────────────────────────────
   useEffect(() => {
     const tick = setInterval(() => {
       setEngagementTimers((prev) => {
@@ -77,7 +77,7 @@ export default function SocialTasks() {
     return () => clearInterval(tick);
   }, []);
 
-  // ── Unlock next group after completing any task in current group ───────────
+  // ── Unlock next group ──────────────────────────────────────────────────────
   const unlockNextGroup = useCallback((groupIndex: number) => {
     setUnlockedGroups((prev) => {
       const next = [...prev];
@@ -91,13 +91,14 @@ export default function SocialTasks() {
     if (!unlockedGroups[groupIndex] || completedEngagement.has(task.id)) return;
 
     if (task.action === "comment") {
+      setCommentModalGroup(groupIndex);
       setShowCommentModal(task.id);
       return;
     }
 
-    if (task.action === "quote") {
-  window.open(task.url, "_blank");
-    }
+    // All actions — like, retweet, quote — open the tweet directly
+    window.open(task.url, "_blank");
+
     setEngagementTimers((prev) => ({ ...prev, [task.id]: THIRTY_SECONDS }));
 
     setTimeout(() => {
@@ -251,12 +252,7 @@ export default function SocialTasks() {
                   return (
                     <button
                       key={task.id}
-                      onClick={() => {
-                        if (task.action === "comment") {
-                          setCommentModalGroup(groupIndex);
-                        }
-                        handleEngagement(task, groupIndex);
-                      }}
+                      onClick={() => handleEngagement(task, groupIndex)}
                       disabled={!isActive}
                       className={`relative p-3 flex flex-col items-center gap-1 transition-all ${
                         done
