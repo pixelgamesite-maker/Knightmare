@@ -47,7 +47,7 @@ export default function Forge() {
   const [downloading, setDownloading] = useState(false);
 
   const unique = Object.entries(inventory).filter(([_, q]) => (q as number) > 0).length;
-  const hasAll6 = unique >= 7;
+  const hasAll6 = unique >= 8;
   const alreadyForged = !!player?.forged_gtd;
 
   // ── On mount: restore persisted knight + wallet state ─────────────────────
@@ -158,7 +158,7 @@ export default function Forge() {
             ⚒ THE FORGE
           </h1>
           <p className="font-['VT323'] text-xl text-[#6b5a80]">
-            Collect all 7 fragments to forge your artifact.
+            Collect all 8 fragments to forge your artifact.
           </p>
         </motion.div>
 
@@ -375,7 +375,7 @@ export default function Forge() {
                   GTD ARTIFACT
                 </p>
                 <p className="font-['VT323'] text-base text-[#6b5a80] mb-5">
-                  Requires all 6 unique fragments. A random knight will be revealed.
+                  Requires all 8 unique fragments. A random knight will be revealed.
                 </p>
 
                 <motion.button
@@ -390,7 +390,7 @@ export default function Forge() {
                   }`}
                   style={hasAll6 ? { boxShadow: "0 0 20px rgba(124,58,237,0.4)" } : {}}
                 >
-                  {forging ? "FORGING..." : hasAll6 ? "⚒ FORGE" : `NEED ${6 - unique} MORE`}
+                  {forging ? "FORGING..." : hasAll6 ? "⚒ FORGE" : `NEED ${8 - unique} MORE`}
                 </motion.button>
               </div>
 
