@@ -13,6 +13,7 @@ import Gallery from "@/pages/gallery";
 import Social from "@/pages/social";
 import AuthCallback from "@/pages/auth/callback";
 import NotFound from "@/pages/not-found";
+import VotePage from "@/pages/vote";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ function Router() {
           <Route path="/forge" component={user ? Forge : () => <Redirect to="/" />} />
           <Route path="/trades" component={user ? Trades : () => <Redirect to="/" />} />
           <Route path="/gallery" component={user ? Gallery : () => <Redirect to="/" />} />
+          <Route path="/vote" component={user ? VotePage : () => <Redirect to="/" />} />
           <Route path="/social" component={user ? Social : () => <Redirect to="/" />} />
           <Route component={NotFound} />
         </Switch>
