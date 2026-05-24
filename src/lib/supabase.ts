@@ -13,12 +13,12 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 export const CDN = "https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments";
 
 export const FRAGMENT_IMAGES: Record<string, string> = {
-  sword:                  `${CDN}/sword.png`,
-  helm:                   `${CDN}/helm.png`,
-  armor:                  `${CDN}/armor.png`,        // fixed: was "amor"
-  gloves:                 `${CDN}/gloves.png`,
-  boots:                  `${CDN}/boots.png`,
-  potion:                 `${CDN}/potion.png`,
-  "book-of-reincarnation":`${CDN}/book-of-reincarnation.png`,
-  // dragon-heart REMOVED
+  sword:                   `${CDN}/sword.png`,
+  helm:                    `${CDN}/helm.png`,
+  armor:                   `${CDN}/armor.png`,
+  gloves:                  `${CDN}/gloves.png`,
+  boots:                   `${CDN}/boots.png`,
+  potion:                  `${CDN}/potion.png`,
+  "book-of-reincarnation": `${CDN}/book-of-reincarnation.png`,
+  "dragon-heart":          `${CDN}/dragon-heart.png`,  // ← added
 };
