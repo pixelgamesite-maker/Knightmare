@@ -131,6 +131,7 @@ export default function PlayerDrawer({ open, onClose }: { open: boolean; onClose
             {/* Nav */}
             <div className="p-4 space-y-2">
               <DrawerBtn onClick={() => go("/hunt")}>⚔ HUNT</DrawerBtn>
+              <DrawerBtn onClick={() => go("/vote")}>🗳 VOTE</DrawerBtn>
               <DrawerBtn onClick={() => go("/forge")}>⚒ FORGE</DrawerBtn>
               <DrawerBtn onClick={() => go("/trades")}>⇄ TRADES</DrawerBtn>
               <DrawerBtn onClick={() => go("/social")}>★ TASKS</DrawerBtn>
