@@ -23,7 +23,7 @@ const COMMUNITIES = [
   { id: "funkari",       name: "Funkari",        image: `${CDN_COMMUNITIES}/Funkari.jpg` },
   { id: "booa",          name: "BOOA",           image: `${CDN_COMMUNITIES}/BOOA.jpg` },
   { id: "doomsayers",    name: "Doomsayers",     image: `${CDN_COMMUNITIES}/Doomsayers.jpg` },
-  { id: "zorgz",         name: "zorgz",          image: `${CDN_COMMUNITIES}/zorgz.jpg` },
+  { id: "zorgz",         name: "zorgz",          image: `${CDN_COMMUNITIES}/Zorgz.jpg` },
   { id: "nopunkism",     name: "No Punkism",     image: `${CDN_COMMUNITIES}/No-punkism.jpg` },
   { id: "megabadgers",   name: "Mega Badgers",   image: `${CDN_COMMUNITIES}/Mega-Honey-badgers.jpg` },
   { id: "shellmates",    name: "Shellmates",     image: `${CDN_COMMUNITIES}/Shellmates.jpg` },
