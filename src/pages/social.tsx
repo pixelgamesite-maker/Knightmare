@@ -8,10 +8,12 @@ const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/p
 
 const ENGAGEMENT_TWEET_URLS = [
   "https://x.com/KnightmaresETH/status/2058812155391033648",
+  "https://x.com/KnightmaresETH/status/2058867768506589643",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
   "2058812155391033648",
+  "2058867768506589643",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
@@ -39,11 +41,16 @@ const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
     { id: "retweet_5", label: "RETWEET", ember: 250, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
     { id: "comment_5", label: "COMMENT", ember: 250, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
   ],
+  [
+    { id: "like_6",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[1] },
+    { id: "retweet_6", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[1] },
+    { id: "comment_6", label: "COMMENT", ember: 400, action: "comment", url: ENGAGEMENT_TWEET_URLS[1] },
+  ],
 ];
 
 export default function SocialTasks() {
   const { player, invalidate: refreshPlayer } = usePlayer();
-  const [unlockedGroups, setUnlockedGroups] = useState<boolean[]>([true]);
+  const [unlockedGroups, setUnlockedGroups] = useState<boolean[]>([true, true]);
   const [completedEngagement, setCompletedEngagement] = useState<Set<string>>(new Set());
   const [engagementTimers, setEngagementTimers] = useState<Record<string, number>>({});
   const [showCommentModal, setShowCommentModal] = useState<string | null>(null);
@@ -301,7 +308,7 @@ export default function SocialTasks() {
           );
         })}
 
-        {/* ── ENGAGEMENT TASK ───────────────────────────────────────────────── */}
+        {/* ── ENGAGEMENT TASKS ──────────────────────────────────────────────── */}
         <div className="mb-3">
           <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
             TWEET ENGAGEMENT
@@ -312,13 +319,14 @@ export default function SocialTasks() {
           const isUnlocked = unlockedGroups[groupIndex];
           const tweetId = ENGAGEMENT_TWEET_IDS[groupIndex];
           const tweetUrl = ENGAGEMENT_TWEET_URLS[groupIndex];
+          const totalEmber = group.reduce((sum, t) => sum + t.ember, 0);
 
           return (
             <motion.div
               key={groupIndex}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              transition={{ delay: 0.1 + groupIndex * 0.05 }}
               className="relative rounded-xl border-2 overflow-hidden mb-4 border-amber-600/50 bg-[#0d0a04]"
             >
               {/* Tweet Header */}
@@ -345,7 +353,7 @@ export default function SocialTasks() {
 
                 <div className="border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20">
                   <p className="font-['VT323'] text-amber-400/70 text-base">
-                    750 EMBER total — Like, Retweet &amp; Comment
+                    {totalEmber} EMBER total — Like, Retweet &amp; Comment
                   </p>
                 </div>
               </div>
@@ -478,7 +486,9 @@ export default function SocialTasks() {
                   disabled={!commentLink.trim() || loading === showCommentModal}
                   className="flex-1 font-['Press_Start_2P'] text-[8px] px-4 py-2.5 bg-[#7c3aed] border border-[#a855f7] text-white rounded disabled:opacity-40"
                 >
-                  {loading === showCommentModal ? "..." : "SUBMIT +250"}
+                  {loading === showCommentModal ? "..." : `SUBMIT +${
+                    ENGAGEMENT_TASK_GROUPS[commentModalGroup]?.find(t => t.action === "comment")?.ember ?? 250
+                  }`}
                 </motion.button>
                 <button
                   onClick={() => setShowCommentModal(null)}
