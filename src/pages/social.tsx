@@ -7,11 +7,11 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 const ENGAGEMENT_TWEET_URLS = [
-  "https://x.com/KnightmaresETH/status/2058506638521237998",
+  "https://x.com/KnightmaresETH/status/2058812155391033648",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
-  "2058506638521237998",
+  "2058812155391033648",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
@@ -22,17 +22,22 @@ interface EngagementTask {
   id: string;
   label: string;
   ember: number;
-  action: "like" | "retweet" | "comment" | "quote";
+  action: "like" | "retweet" | "comment" | "quote" | "follow";
   url: string;
   optional?: boolean;
 }
 
+const FOLLOW_URL = "https://x.com/KnightmaresETH";
+
+const FOLLOW_TASKS: EngagementTask[] = [
+  { id: "follow_knightmares", label: "FOLLOW", ember: 250, action: "follow", url: FOLLOW_URL },
+];
+
 const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
   [
-    { id: "like_5",    label: "LIKE",    ember: 200, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "retweet_5", label: "RETWEET", ember: 200, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "comment_5", label: "COMMENT", ember: 200, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "quote_5",   label: "QUOTE",   ember: 200, action: "quote",   url: ENGAGEMENT_TWEET_URLS[0], optional: true },
+    { id: "like_5",    label: "LIKE",    ember: 250, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "retweet_5", label: "RETWEET", ember: 250, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "comment_5", label: "COMMENT", ember: 250, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
   ],
 ];
 
@@ -96,7 +101,7 @@ export default function SocialTasks() {
       return;
     }
 
-    // All actions — like, retweet, quote — open the tweet directly
+    // All actions — like, retweet, quote, follow — open the tweet/profile directly
     window.open(task.url, "_blank");
 
     setEngagementTimers((prev) => ({ ...prev, [task.id]: THIRTY_SECONDS }));
@@ -192,6 +197,110 @@ export default function SocialTasks() {
           </p>
         </motion.div>
 
+        {/* ── FOLLOW TASKS ──────────────────────────────────────────────────── */}
+        <div className="mb-3">
+          <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
+            FOLLOW
+          </p>
+        </div>
+
+        {FOLLOW_TASKS.map((task) => {
+          const done = completedEngagement.has(task.id);
+          const timer = engagementTimers[task.id] || 0;
+          const isActive = !done && timer === 0;
+
+          return (
+            <motion.div
+              key={task.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+              className="relative rounded-xl border-2 overflow-hidden mb-4 border-amber-600/50 bg-[#0d0a04]"
+            >
+              <div className="p-4 pb-2">
+                <div className="flex items-center gap-2 mb-3">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 fill-amber-400">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                  <span className="font-['Press_Start_2P'] text-[8px] text-amber-400/70">
+                    @KnightmaresETH
+                  </span>
+                  <a
+                    href={task.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-auto font-['Press_Start_2P'] text-[6px] text-amber-600/60 hover:text-amber-400 transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    OPEN ON X
+                  </a>
+                </div>
+                <div className="border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20">
+                  <p className="font-['VT323'] text-amber-400/70 text-base">
+                    Follow to earn 250 EMBER
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid border-t border-amber-900/30 grid-cols-1">
+                <button
+                  onClick={() => handleEngagement(task, -1)}
+                  disabled={!isActive}
+                  className={`relative p-3 flex flex-col items-center gap-1 transition-all ${
+                    done
+                      ? "bg-emerald-900/10"
+                      : isActive
+                      ? "hover:bg-amber-900/10 cursor-pointer"
+                      : "cursor-not-allowed opacity-40"
+                  }`}
+                >
+                  {done ? (
+                    <>
+                      <span className="font-['Press_Start_2P'] text-[10px] text-emerald-400">
+                        +{task.ember}
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-emerald-600">
+                        EMBER
+                      </span>
+                    </>
+                  ) : timer > 0 ? (
+                    <>
+                      <span
+                        className="font-['Press_Start_2P'] text-[12px] text-cyan-400"
+                        style={{ textShadow: "0 0 8px rgba(34,211,238,0.3)" }}
+                      >
+                        {Math.ceil(timer / 1000)}s
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-[#4a3a5e]">
+                        VERIFYING
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-['Press_Start_2P'] text-[10px] text-amber-300">
+                        +{task.ember}
+                      </span>
+                      <span className="font-['Press_Start_2P'] text-[6px] text-amber-600/70">
+                        {task.label}
+                      </span>
+                    </>
+                  )}
+                  {flashTask === task.id && (
+                    <motion.div
+                      initial={{ opacity: 0.6 }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0 bg-amber-400/20 pointer-events-none"
+                    />
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          );
+        })}
+
         {/* ── ENGAGEMENT TASK ───────────────────────────────────────────────── */}
         <div className="mb-3">
           <p className="font-['Press_Start_2P'] text-[8px] text-[#4a3a5e] mb-3 tracking-widest">
@@ -236,13 +345,13 @@ export default function SocialTasks() {
 
                 <div className="border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20">
                   <p className="font-['VT323'] text-amber-400/70 text-base">
-                    800 EMBER total — Like, Retweet, Comment + optional Quote
+                    750 EMBER total — Like, Retweet &amp; Comment
                   </p>
                 </div>
               </div>
 
               {/* Engagement Buttons */}
-              <div className="grid border-t border-amber-900/30 grid-cols-4">
+              <div className="grid border-t border-amber-900/30 grid-cols-3">
                 {group.map((task, taskIndex) => {
                   const done = completedEngagement.has(task.id);
                   const timer = engagementTimers[task.id] || 0;
@@ -369,7 +478,7 @@ export default function SocialTasks() {
                   disabled={!commentLink.trim() || loading === showCommentModal}
                   className="flex-1 font-['Press_Start_2P'] text-[8px] px-4 py-2.5 bg-[#7c3aed] border border-[#a855f7] text-white rounded disabled:opacity-40"
                 >
-                  {loading === showCommentModal ? "..." : "SUBMIT +200"}
+                  {loading === showCommentModal ? "..." : "SUBMIT +250"}
                 </motion.button>
                 <button
                   onClick={() => setShowCommentModal(null)}
