@@ -9,7 +9,7 @@ const CDN_COMMUNITIES = "/communities";
 
 // 10-hour voting window key
 const VOTE_END_KEY = "km_vote_end_ts";
-const TEN_HOURS = 10 * 60 * 60 * 1000;
+const TEN_HOURS = 12 * 60 * 60 * 1000;
 
 const VOTE_COST = 250; // EMBER per vote
 const MAX_VOTES = 2;
@@ -68,7 +68,7 @@ async function castVote(
   userId: string,
   communityId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // Uses an RPC that atomically: checks vote count, deducts EMBER, inserts vote, upserts count
+  // Uses an RPC that atomically: checks vote count, awards EMBER, inserts vote, upserts count
   const { data, error } = await supabase.rpc("cast_community_vote", {
     p_community_id: communityId,
   });
@@ -175,8 +175,7 @@ function CommunityCard({
   const canVote =
     votingOpen &&
     !userVotedFor &&
-    votesUsed < MAX_VOTES &&
-    emberBalance >= VOTE_COST;
+    votesUsed < MAX_VOTES;
 
   const isTop5 = rank !== null && rank <= TOP_N;
 
@@ -258,7 +257,7 @@ function CommunityCard({
           ) : (
             <>
               <img src={EMBER_ICON} alt="" className="w-3 h-3 object-contain" />
-              {VOTE_COST.toLocaleString()} VOTE
+              VOTE +{VOTE_COST.toLocaleString()}
             </>
           )}
         </motion.button>
@@ -279,8 +278,6 @@ export default function VotePage() {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [msLeft, setMsLeft] = useState(TEN_HOURS);
   const [loading, setLoading] = useState(true);
-  const [claiming, setClaiming] = useState(false);
-  const [voteClaimed, setVoteClaimed] = useState(false);
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -354,7 +351,7 @@ export default function VotePage() {
         [communityId]: (prev[communityId] ?? 0) + 1,
       }));
       refreshPlayer();
-      showToast("Vote cast!", true);
+      showToast("Vote cast! +250 EMBER", true);
     } else {
       showToast(res.error ?? "Failed", false);
     }
@@ -364,32 +361,6 @@ export default function VotePage() {
   const showToast = (msg: string, ok: boolean) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
-  };
-
-  // ── One-time 500 EMBER vote-page claim ──────────────────────────────────
-  // Check if user has already claimed on mount
-  useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from("vote_page_claims")
-      .select("id")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data }) => { if (data) setVoteClaimed(true); });
-  }, [userId]);
-
-  const claimVoteEmber = async () => {
-    if (voteClaimed || !userId) return;
-    setClaiming(true);
-    const { data } = await supabase.rpc("claim_vote_page_ember");
-    setClaiming(false);
-    if (data?.success) {
-      setVoteClaimed(true);
-      refreshPlayer();
-      showToast("+500 EMBER claimed!", true);
-    } else {
-      showToast(data?.error || "Already claimed", false);
-    }
   };
 
   // ── UI ────────────────────────────────────────────────────────────────────
@@ -495,24 +466,7 @@ export default function VotePage() {
             </div>
           </div>
 
-          {/* One-time 500 EMBER claim */}
-          <div className="flex flex-col items-center gap-1">
-            <motion.button
-              whileHover={{ scale: !voteClaimed ? 1.05 : 1 }}
-              whileTap={{ scale: !voteClaimed ? 0.95 : 1 }}
-              onClick={claimVoteEmber}
-              disabled={voteClaimed || claiming}
-              className={`font-['Press_Start_2P'] text-[7px] px-4 py-3 rounded-xl border-2 tracking-wider transition-all flex items-center gap-1.5 ${
-                !voteClaimed
-                  ? "bg-amber-500/20 border-amber-500/50 text-amber-400 hover:bg-amber-500/30"
-                  : "bg-[#0d0420] border-[#1a0a2e] text-[#2d1a4e] cursor-not-allowed"
-              }`}
-            >
-              <img src={EMBER_ICON} alt="" className="w-3 h-3 object-contain" />
-              {claiming ? "..." : voteClaimed ? "✓ CLAIMED" : "CLAIM 500 EMBER"}
-            </motion.button>
-            <p className="font-['Press_Start_2P'] text-[6px] text-[#4a3a5e]">ONE TIME ONLY</p>
-          </div>
+
         </motion.div>
 
         {/* ── Main 2-col layout ── */}
