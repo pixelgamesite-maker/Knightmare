@@ -7,9 +7,8 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 const CDN_COMMUNITIES = "/communities";
 
-// ⬇️ SET THIS to your actual vote end time. All users count down to this exact moment.
-// Change the date/time string and redeploy — that's all you need to do.
-const VOTE_END_TS: number = new Date("2025-06-01T20:00:00Z").getTime();
+// Fixed voting end time: May 25 2026 16:56 UTC (9 hours from 07:56 UTC)
+const VOTE_END_TS = 1779728160000;
 
 const VOTE_COST = 250; // EMBER per vote
 const MAX_VOTES = 2;
@@ -276,11 +275,10 @@ export default function VotePage() {
   const [userVotes, setUserVotes] = useState<string[]>([]);
   const [voting, setVoting] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-  const [msLeft, setMsLeft] = useState(NINE_HOURS);
+  const [msLeft, setMsLeft] = useState(() => Math.max(0, VOTE_END_TS - Date.now()));
   const [loading, setLoading] = useState(true);
 
   // ── Timer ─────────────────────────────────────────────────────────────────
-  // All users count down to the same fixed VOTE_END_TS — no per-user drift.
   useEffect(() => {
     const tick = () => setMsLeft(Math.max(0, VOTE_END_TS - Date.now()));
     tick();
