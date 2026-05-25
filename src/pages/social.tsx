@@ -54,17 +54,22 @@ export default function SocialTasks() {
 
   const intervalRefs = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
-  // ── Load state from localStorage on mount ──────────────────────────────────
+  // ── Load state from DB + localStorage on mount ───────────────────────────
   useEffect(() => {
-    const savedEngagement = localStorage.getItem("km_engagement");
     const savedTimers = localStorage.getItem("km_engagement_timers");
+    if (savedTimers) setEngagementTimers(JSON.parse(savedTimers));
 
-    if (savedEngagement) {
-      setCompletedEngagement(new Set<string>(JSON.parse(savedEngagement)));
-    }
-    if (savedTimers) {
-      setEngagementTimers(JSON.parse(savedTimers));
-    }
+    // Load completed tasks from DB so localStorage wipe doesn't let users re-earn
+    supabase.from("social_tasks").select("task_id").then(({ data }) => {
+      if (data && data.length > 0) {
+        const ids = new Set<string>(data.map((r: any) => r.task_id));
+        setCompletedEngagement(ids);
+        localStorage.setItem("km_engagement", JSON.stringify([...ids]));
+      } else {
+        const savedEngagement = localStorage.getItem("km_engagement");
+        if (savedEngagement) setCompletedEngagement(new Set<string>(JSON.parse(savedEngagement)));
+      }
+    });
   }, []);
 
   // ── Global countdown ticker ────────────────────────────────────────────────
@@ -225,23 +230,18 @@ export default function SocialTasks() {
                   <span className="font-['Press_Start_2P'] text-[8px] text-amber-400/70">
                     @KnightmaresETH
                   </span>
-                  <a
-                    href={task.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-auto font-['Press_Start_2P'] text-[6px] text-amber-600/60 hover:text-amber-400 transition-colors flex items-center gap-1"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    OPEN ON X
-                  </a>
                 </div>
-                <div className="border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20">
+                <a
+                  href={task.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => !done && handleEngagement(task, -1)}
+                  className="block border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20 hover:bg-amber-900/20 hover:border-amber-600/40 transition-all cursor-pointer"
+                >
                   <p className="font-['VT323'] text-amber-400/70 text-base">
-                    Follow to earn 250 EMBER
+                    {done ? "✓ Following @KnightmaresETH" : "Follow to earn 250 EMBER"}
                   </p>
-                </div>
+                </a>
               </div>
 
               <div className="grid border-t border-amber-900/30 grid-cols-1">
