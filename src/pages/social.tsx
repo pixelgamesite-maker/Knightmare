@@ -7,13 +7,13 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 const ENGAGEMENT_TWEET_URLS = [
-  "https://x.com/KnightmaresETH/status/2058867768506589643",
   "https://x.com/KnightmaresETH/status/2058950045148262512",
+  "https://x.com/KnightmaresETH/status/2059009400744935847",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
-  "2058867768506589643",
   "2058950045148262512",
+  "2059009400744935847",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
@@ -37,14 +37,14 @@ const FOLLOW_TASKS: EngagementTask[] = [
 
 const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
   [
-    { id: "like_6",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "retweet_6", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "comment_6", label: "COMMENT", ember: 400, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "like_7",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "retweet_7", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "comment_7", label: "COMMENT", ember: 400, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
   ],
   [
-    { id: "like_7",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[1] },
-    { id: "retweet_7", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[1] },
-    { id: "comment_7", label: "COMMENT", ember: 400, action: "comment", url: ENGAGEMENT_TWEET_URLS[1] },
+    { id: "like_8",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[1] },
+    { id: "retweet_8", label: "RETWEET", ember: 500, action: "retweet", url: ENGAGEMENT_TWEET_URLS[1] },
+    { id: "comment_8", label: "COMMENT", ember: 500, action: "comment", url: ENGAGEMENT_TWEET_URLS[1] },
   ],
 ];
 
