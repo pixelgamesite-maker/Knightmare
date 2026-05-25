@@ -7,12 +7,12 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 const ENGAGEMENT_TWEET_URLS = [
-  "https://x.com/KnightmaresETH/status/2058812155391033648",
+  "https://x.com/KnightmaresETH/status/2058950045148262512",
   "https://x.com/KnightmaresETH/status/2058867768506589643",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
-  "2058812155391033648",
+  "2058950045148262512",
   "2058867768506589643",
 ];
 
@@ -37,9 +37,9 @@ const FOLLOW_TASKS: EngagementTask[] = [
 
 const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
   [
-    { id: "like_5",    label: "LIKE",    ember: 250, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "retweet_5", label: "RETWEET", ember: 250, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "comment_5", label: "COMMENT", ember: 250, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "like_5",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "retweet_5", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "comment_5", label: "COMMENT", ember: 400, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
   ],
   [
     { id: "like_6",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[1] },
@@ -105,7 +105,8 @@ export default function SocialTasks() {
 
   // ── Engagement Task Handler ────────────────────────────────────────────────
   const handleEngagement = useCallback((task: EngagementTask, groupIndex: number) => {
-    if (!unlockedGroups[groupIndex] || completedEngagement.has(task.id)) return;
+    if (groupIndex !== -1 && !unlockedGroups[groupIndex]) return;
+    if (completedEngagement.has(task.id)) return;
 
     if (task.action === "comment") {
       setCommentModalGroup(groupIndex);
