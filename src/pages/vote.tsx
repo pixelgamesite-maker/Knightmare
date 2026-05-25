@@ -15,8 +15,7 @@ const NINE_HOURS = 9 * 60 * 60 * 1000;
 // If not yet set in localStorage, it seeds from now + 9 hours on first load.
 // All users share the same end time once seeded — change this to a hardcoded
 // value (e.g. new Date("2025-06-01T20:00:00Z").getTime()) to fully fix the end time.
-const VOTE_END_TS: number | null = null; // set a hardcoded timestamp here to override localStorage
-
+const VOTE_END_TS: number | null = new Date("2025-06-01T20:00:00Z").getTime();
 const VOTE_COST = 250; // EMBER per vote
 const MAX_VOTES = 2;
 const TOP_N = 5;
