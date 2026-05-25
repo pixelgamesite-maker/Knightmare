@@ -7,15 +7,10 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 const CDN_COMMUNITIES = "/communities";
 
-// 9-hour voting window — fixed absolute end time (not per-user)
-const VOTE_END_KEY = "km_vote_end_ts";
-const NINE_HOURS = 9 * 60 * 60 * 1000;
+// ⬇️ SET THIS to your actual vote end time. All users count down to this exact moment.
+// Change the date/time string and redeploy — that's all you need to do.
+const VOTE_END_TS: number = new Date("2025-06-01T20:00:00Z").getTime();
 
-// Set this to the real absolute end time of the vote (ms since epoch).
-// If not yet set in localStorage, it seeds from now + 9 hours on first load.
-// All users share the same end time once seeded — change this to a hardcoded
-// value (e.g. new Date("2025-06-01T20:00:00Z").getTime()) to fully fix the end time.
-const VOTE_END_TS: number | null = new Date("2025-06-01T20:00:00Z").getTime();
 const VOTE_COST = 250; // EMBER per vote
 const MAX_VOTES = 2;
 const TOP_N = 5;
@@ -285,29 +280,9 @@ export default function VotePage() {
   const [loading, setLoading] = useState(true);
 
   // ── Timer ─────────────────────────────────────────────────────────────────
-  // Uses a single shared end timestamp so all users see the same countdown.
-  // Priority: VOTE_END_TS hardcoded constant > Supabase app_config > localStorage fallback.
+  // All users count down to the same fixed VOTE_END_TS — no per-user drift.
   useEffect(() => {
-    let endTs: number;
-
-    if (VOTE_END_TS !== null) {
-      // Hardcoded absolute end time — most reliable, no per-user drift
-      endTs = VOTE_END_TS;
-    } else {
-      // Fallback: seed once globally via localStorage on the FIRST ever load.
-      // NOTE: to fully fix the "voting ended for some users" bug, replace
-      // VOTE_END_TS above with a hardcoded timestamp, e.g.:
-      //   const VOTE_END_TS = new Date("2025-06-01T20:00:00Z").getTime();
-      const stored = localStorage.getItem(VOTE_END_KEY);
-      if (stored) {
-        endTs = parseInt(stored, 10);
-      } else {
-        endTs = Date.now() + NINE_HOURS;
-        localStorage.setItem(VOTE_END_KEY, String(endTs));
-      }
-    }
-
-    const tick = () => setMsLeft(Math.max(0, endTs - Date.now()));
+    const tick = () => setMsLeft(Math.max(0, VOTE_END_TS - Date.now()));
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
