@@ -8,12 +8,10 @@ const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/p
 
 const ENGAGEMENT_TWEET_URLS = [
   "https://x.com/KnightmaresETH/status/2059259560456503403",
-  "https://x.com/KnightmaresETH/status/2059009400744935847",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
   "2059259560456503403",
-  "2059009400744935847",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
@@ -41,11 +39,6 @@ const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
     { id: "retweet_9", label: "RETWEET", ember: 500, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
     { id: "comment_9", label: "COMMENT", ember: 500, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
     { id: "quote_9",   label: "QUOTE",   ember: 700, action: "quote",   url: ENGAGEMENT_TWEET_URLS[0], optional: true },
-  ],
-  [
-    { id: "like_8",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[1] },
-    { id: "retweet_8", label: "RETWEET", ember: 500, action: "retweet", url: ENGAGEMENT_TWEET_URLS[1] },
-    { id: "comment_8", label: "COMMENT", ember: 500, action: "comment", url: ENGAGEMENT_TWEET_URLS[1] },
   ],
 ];
 
