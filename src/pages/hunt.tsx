@@ -10,7 +10,7 @@ const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/p
 
 // ── 48-hour hunt reset timer key ─────────────────────────────────────────────
 const HUNT_TIMER_KEY = "km_hunt_reset_end";
-const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+const FORTY_EIGHT_HOURS = (48 * 60 + 210) * 60 * 1000; // 51h 30m (48h + 3h30m)
 
 type AggregatedLoot = {
   fragments: Record<string, number>;
