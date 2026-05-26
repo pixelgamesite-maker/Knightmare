@@ -126,13 +126,13 @@ export default function Hunt() {
           <div>
             <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">GTD</p>
             <p className="text-[10px] text-purple-400 mt-1">
-              {player?.forged_gtd ? "YES" : "NO"}
+              {player?.forged_gtd ? "-" : "-"}
             </p>
           </div>
           <div>
             <p className="font-['Press_Start_2P'] text-[8px] text-[#6b5a80]">FCFS</p>
             <p className="text-[10px] text-purple-400 mt-1">
-              {player?.forged_fcfs ? "YES" : "NO"}
+              {player?.forged_fcfs ? "-" : "-"}
             </p>
           </div>
         </div>
