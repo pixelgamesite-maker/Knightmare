@@ -7,11 +7,11 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 const ENGAGEMENT_TWEET_URLS = [
-  "https://x.com/KnightmaresETH/status/2059259560456503403",
+  "https://x.com/KnightmaresETH/status/2059389159261835508",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
-  "2059259560456503403",
+  "2059389159261835508",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
@@ -35,10 +35,9 @@ const FOLLOW_TASKS: EngagementTask[] = [
 
 const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
   [
-    { id: "like_9",    label: "LIKE",    ember: 500, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "retweet_9", label: "RETWEET", ember: 500, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "comment_9", label: "COMMENT", ember: 500, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "quote_9",   label: "QUOTE",   ember: 700, action: "quote",   url: ENGAGEMENT_TWEET_URLS[0], optional: true },
+    { id: "like_10",    label: "LIKE",    ember: 200, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "retweet_10", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "comment_10", label: "COMMENT", ember: 300, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
   ],
 ];
 
@@ -349,7 +348,6 @@ export default function SocialTasks() {
                 <div className="border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20">
                   <p className="font-['VT323'] text-amber-400/70 text-base">
                     {totalEmber} EMBER total — Like, Retweet &amp; Comment
-                    {group.some((t) => t.optional) && " (+ optional Quote)"}
                   </p>
                 </div>
               </div>
@@ -378,12 +376,6 @@ export default function SocialTasks() {
                           : "cursor-not-allowed opacity-40"
                       } ${!isLast ? "border-r border-amber-900/30" : ""}`}
                     >
-                      {task.optional && !done && (
-                        <span className="font-['Press_Start_2P'] text-[5px] text-amber-600/60 mb-0.5">
-                          OPTIONAL
-                        </span>
-                      )}
-
                       {done ? (
                         <>
                           <span className="font-['Press_Start_2P'] text-[10px] text-emerald-400">
@@ -486,7 +478,7 @@ export default function SocialTasks() {
                   className="flex-1 font-['Press_Start_2P'] text-[8px] px-4 py-2.5 bg-[#7c3aed] border border-[#a855f7] text-white rounded disabled:opacity-40"
                 >
                   {loading === showCommentModal ? "..." : `SUBMIT +${
-                    ENGAGEMENT_TASK_GROUPS[commentModalGroup]?.find(t => t.action === "comment")?.ember ?? 250
+                    ENGAGEMENT_TASK_GROUPS[commentModalGroup]?.find(t => t.action === "comment")?.ember ?? 300
                   }`}
                 </motion.button>
                 <button
