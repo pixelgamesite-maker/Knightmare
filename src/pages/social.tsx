@@ -7,12 +7,12 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 const ENGAGEMENT_TWEET_URLS = [
-  "https://x.com/KnightmaresETH/status/2058950045148262512",
+  "https://x.com/KnightmaresETH/status/2059259560456503403",
   "https://x.com/KnightmaresETH/status/2059009400744935847",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
-  "2058950045148262512",
+  "2059259560456503403",
   "2059009400744935847",
 ];
 
@@ -37,9 +37,10 @@ const FOLLOW_TASKS: EngagementTask[] = [
 
 const ENGAGEMENT_TASK_GROUPS: EngagementTask[][] = [
   [
-    { id: "like_7",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "retweet_7", label: "RETWEET", ember: 300, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
-    { id: "comment_7", label: "COMMENT", ember: 400, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "like_9",    label: "LIKE",    ember: 500, action: "like",    url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "retweet_9", label: "RETWEET", ember: 500, action: "retweet", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "comment_9", label: "COMMENT", ember: 500, action: "comment", url: ENGAGEMENT_TWEET_URLS[0] },
+    { id: "quote_9",   label: "QUOTE",   ember: 700, action: "quote",   url: ENGAGEMENT_TWEET_URLS[0], optional: true },
   ],
   [
     { id: "like_8",    label: "LIKE",    ember: 300, action: "like",    url: ENGAGEMENT_TWEET_URLS[1] },
@@ -355,12 +356,16 @@ export default function SocialTasks() {
                 <div className="border rounded-lg p-3 text-center bg-amber-900/10 border-amber-800/20">
                   <p className="font-['VT323'] text-amber-400/70 text-base">
                     {totalEmber} EMBER total — Like, Retweet &amp; Comment
+                    {group.some((t) => t.optional) && " (+ optional Quote)"}
                   </p>
                 </div>
               </div>
 
               {/* Engagement Buttons */}
-              <div className="grid border-t border-amber-900/30 grid-cols-3">
+              <div
+                className="grid border-t border-amber-900/30"
+                style={{ gridTemplateColumns: `repeat(${group.length}, minmax(0, 1fr))` }}
+              >
                 {group.map((task, taskIndex) => {
                   const done = completedEngagement.has(task.id);
                   const timer = engagementTimers[task.id] || 0;
