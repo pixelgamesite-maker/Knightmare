@@ -7,11 +7,11 @@ import TopBar from "@/components/layout/TopBar";
 const EMBER_ICON = `https://psibadkdncspgikzzmnu.supabase.co/storage/v1/object/public/Fragments/ember.png`;
 
 const ENGAGEMENT_TWEET_URLS = [
- "https://x.com/knightmareseth/status/2059627275419615343",
+ "https://x.com/KnightmaresETH/status/2059955077444509945",
 ];
 
 const ENGAGEMENT_TWEET_IDS = [
- "2059627275419615343",
+ "2059955077444509945",
 ];
 
 const THIRTY_SECONDS = 30 * 1000;
